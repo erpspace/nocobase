@@ -45,7 +45,21 @@ export const InputNumber: ComposedInputNumber = connect((props: AntdInputNumberP
   if (others['formatStyle']) {
     inputNumberProps = omit(inputNumberProps, ['addonAfter', 'addonBefore']);
   }
-  return <AntdNumber {...inputNumberProps} />;
+  return (
+    <AntdNumber
+      {...inputNumberProps}
+      parser={(value) => {
+        // Remove all spaces and replace comma with dot if comma is decimal separator
+        const normalized = value
+          .toString()
+          //   .replaceAll(',', '.')
+          .replace(/\s/g, '')
+          .replace(/(\d+),(\d{2})$/, '$1.$2') // handles "1000000,34"
+          .replace(/,/g, ''); // removes thousand separators
+        return parseFloat(normalized);
+      }}
+    />
+  );
 }, mapReadPretty(ReadPretty));
 
 InputNumber.ReadPretty = ReadPretty;
