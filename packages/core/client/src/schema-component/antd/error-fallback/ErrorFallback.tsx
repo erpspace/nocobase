@@ -76,15 +76,15 @@ export const ErrorFallback: FC<FallbackProps> & {
         style={{ maxWidth: '60vw', margin: 'auto' }}
         status="error"
         title={t('Render Failed')}
-        subTitle={subTitle}
-        extra={[
-          <Button type="primary" key="feedback" href="https://github.com/nocobase/nocobase/issues" target="_blank">
-            {t('Feedback')}
-          </Button>,
-          <Button key="log" loading={loading} onClick={download}>
-            {t('Download logs')}
-          </Button>,
-        ]}
+        // subTitle={subTitle}
+        // extra={[
+        //   <Button type="primary" key="feedback" href="https://github.com/nocobase/nocobase/issues" target="_blank">
+        //     {t('Feedback')}
+        //   </Button>,
+        //   <Button key="log" loading={loading} onClick={download}>
+        //     {t('Download logs')}
+        //   </Button>,
+        // ]}
       >
         <Paragraph copyable>
           <Text type="danger" style={{ whiteSpace: 'pre-line', textAlign: 'center' }}>
