@@ -19,6 +19,8 @@ import { useDynamicComponentProps } from '../../hoc/withDynamicSchemaProps';
 import { useCompile, useComponent } from '../../schema-component';
 import { useIsAllowToSetDefaultValue } from '../../schema-settings/hooks/useIsAllowToSetDefaultValue';
 import { CollectionFieldProvider, useCollectionField } from './CollectionFieldProvider';
+import { t } from 'i18next';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   component: any;
@@ -37,6 +39,14 @@ const setRequired = (field: Field, fieldSchema: Schema, uiSchema: Schema) => {
   if (typeof fieldSchema['required'] === 'undefined') {
     field.required = !!uiSchema['required'];
   }
+};
+
+const getRequired = (field: Field, fieldSchema: Schema, uiSchema: Schema): boolean => {
+  if (typeof fieldSchema['required'] === 'undefined') {
+    return !!uiSchema['required'];
+  }
+
+  return typeof fieldSchema['required'] === 'boolean' ? fieldSchema['required'] : !!fieldSchema['required'];
 };
 
 /**
@@ -81,6 +91,7 @@ const CollectionFieldInternalField_deprecated: React.FC = (props: Props) => {
       field.readPretty = true;
     }
     setRequired(field, fieldSchema, uiSchema);
+
     // @ts-ignore
     field.dataSource = uiSchema.enum;
     const originalProps = compile(uiSchema['x-component-props']) || {};
@@ -96,6 +107,7 @@ const CollectionFieldInternalField = (props) => {
   const field = useField<Field>();
   const fieldSchema = useFieldSchema();
   const { uiSchema } = useCollectionFieldUISchema();
+  const { t } = useTranslation();
   const Component = useComponent(
     fieldSchema['x-component-props']?.['component'] || uiSchema?.['x-component'] || 'Input',
   );
@@ -107,6 +119,22 @@ const CollectionFieldInternalField = (props) => {
     // This code is meant to fix this issue.
     if (fieldSchema['x-read-pretty'] === true && !field.readPretty) {
       field.readPretty = true;
+    }
+
+    if (getRequired(field, fieldSchema, uiSchema)) {
+      field.validator = concat(field.validator || [], [
+        (value) => {
+          if (!value) {
+            return t('This field is invalid');
+          }
+        },
+        // {
+        //   required: true,
+        //   message: `${uiSchema.title} is required`,
+        // },
+      ]);
+
+      field.required = false;
     }
   }, [field, fieldSchema]);
 
