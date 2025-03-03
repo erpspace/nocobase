@@ -50,6 +50,9 @@ export const InputNumber: ComposedInputNumber = connect((props: AntdInputNumberP
       {...inputNumberProps}
       parser={(value) => {
         // Remove all spaces and replace comma with dot if comma is decimal separator
+        if (!value || value === '') {
+          return null;
+        }
         const normalized = value
           .toString()
           //   .replaceAll(',', '.')
