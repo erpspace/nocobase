@@ -57,16 +57,59 @@ export class PluginCollectionDuplicateServer extends Plugin {
             ...values,
             options: collection.options,
             sort: collection.sort,
-            fields: fields.map((field) => ({
-              ...field.toJSON(),
-              id: undefined,
-              collection_id: undefined,
-              key: undefined,
-              reverseKey: undefined,
-              collectionName: undefined,
-              collection_name: undefined,
-              // collectionName: values.name,
-            })),
+            fields: await Promise.all(
+              fields.map(async function (field) {
+                let sort = field.sort;
+                if (sort === undefined) {
+                  const originalField = await ctx.db.getRepository('fields').findOne({
+                    filter: {
+                      collectionName: collection.name,
+                      key: field.key,
+                    },
+                  });
+                  sort = originalField ? originalField.get('sort') : 0;
+                }
+
+                ctx.logger.debug('originalCollectionField.sort', { sort });
+                // let sort = field.sort ?? undefined;
+                // if (!sort) {
+                //   const originalCollectionField = await ctx.db.getRepository('fields').findOne({
+                //     filterByTK: field.key,
+                //     filter: {
+                //       collectionName: collection.name,
+                //       key: field.key,
+                //     },
+                //   });
+                //   if (originalCollectionField) {
+                //     // sort = originalCollectionField.sort;
+                //     ctx.logger.debug('originalCollectionField.sort', originalCollectionField?.get('sort'));
+                //   }
+                // }
+
+                return {
+                  ...field.toJSON(),
+                  id: undefined,
+                  collection_id: undefined,
+                  key: undefined,
+                  reverseKey: undefined,
+                  collectionName: undefined,
+                  collection_name: undefined,
+                  sort: sort ?? 0,
+                  __sort: sort ?? 0,
+                };
+              }),
+            ),
+            // fields: fields.map((field) => ({
+            //   ...field.toJSON(),
+            //   id: undefined,
+            //   collection_id: undefined,
+            //   key: undefined,
+            //   reverseKey: undefined,
+            //   collectionName: undefined,
+            //   collection_name: undefined,
+            //   sort: field.sort ?? 1,
+            //   // collectionName: values.name,
+            // })),
           },
           context: ctx,
         });
