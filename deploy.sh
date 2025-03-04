@@ -1,5 +1,3 @@
-git pull origin main
-
 yarn nocobase clean
 yarn rimraf -rf node_modules
 
