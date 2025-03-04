@@ -70,7 +70,7 @@ export const ImportActionInitializer = () => {
 
 export const ImportWarning = () => {
   const { t } = useImportTranslation();
-  return <Alert type="warning" style={{ marginBottom: '10px' }} message={t('Import warnings', { limit: 2000 })} />;
+  return <Alert type="warning" style={{ marginBottom: '10px' }} message={t('Import warnings', { limit: 15000 })} />;
 };
 
 export const DownloadTips = () => {

@@ -57,59 +57,34 @@ export class PluginCollectionDuplicateServer extends Plugin {
             ...values,
             options: collection.options,
             sort: collection.sort,
-            fields: await Promise.all(
-              fields.map(async function (field) {
-                let sort = field.sort;
-                if (sort === undefined) {
-                  const originalField = await ctx.db.getRepository('fields').findOne({
-                    filter: {
-                      collectionName: collection.name,
-                      key: field.key,
-                    },
-                  });
-                  sort = originalField ? originalField.get('sort') : 0;
-                }
+            // fields: await Promise.all(
+            //   fields.map(async function (field) {
+            //     let sort = field.sort;
+            //     if (sort === undefined) {
+            //       const originalField = await ctx.db.getRepository('fields').findOne({
+            //         filter: {
+            //           collectionName: collection.name,
+            //           key: field.key,
+            //         },
+            //       });
+            //       sort = originalField ? originalField.get('sort') : 0;
+            //     }
 
-                ctx.logger.debug('originalCollectionField.sort', { sort });
-                // let sort = field.sort ?? undefined;
-                // if (!sort) {
-                //   const originalCollectionField = await ctx.db.getRepository('fields').findOne({
-                //     filterByTK: field.key,
-                //     filter: {
-                //       collectionName: collection.name,
-                //       key: field.key,
-                //     },
-                //   });
-                //   if (originalCollectionField) {
-                //     // sort = originalCollectionField.sort;
-                //     ctx.logger.debug('originalCollectionField.sort', originalCollectionField?.get('sort'));
-                //   }
-                // }
+            //     ctx.logger.debug('originalCollectionField.sort', { sort });
 
-                return {
-                  ...field.toJSON(),
-                  id: undefined,
-                  collection_id: undefined,
-                  key: undefined,
-                  reverseKey: undefined,
-                  collectionName: undefined,
-                  collection_name: undefined,
-                  sort: sort ?? 0,
-                  __sort: sort ?? 0,
-                };
-              }),
-            ),
-            // fields: fields.map((field) => ({
-            //   ...field.toJSON(),
-            //   id: undefined,
-            //   collection_id: undefined,
-            //   key: undefined,
-            //   reverseKey: undefined,
-            //   collectionName: undefined,
-            //   collection_name: undefined,
-            //   sort: field.sort ?? 1,
-            //   // collectionName: values.name,
-            // })),
+            //     return {
+            //       ...field.toJSON(),
+            //       id: undefined,
+            //       collection_id: undefined,
+            //       key: undefined,
+            //       reverseKey: undefined,
+            //       collectionName: undefined,
+            //       collection_name: undefined,
+            //       sort: sort ?? 0,
+            //       // __sort: sort ?? 0,
+            //     };
+            //   }),
+            // ),
           },
           context: ctx,
         });
@@ -118,16 +93,31 @@ export class PluginCollectionDuplicateServer extends Plugin {
           ctx.throw(500);
         }
 
-        // for (const field of fields) {
-        //   await ctx.db.getRepository('fields').create({
-        //     values: {
-        //       ...field.toJSON(),
-        //       key: undefined,
-        //       collectionName: values.name,
-        //       collection_name: values.name,
-        //     },
-        //   });
-        // }
+        for (const field of fields) {
+          let sort = field.sort;
+          if (sort === undefined) {
+            const originalField = await ctx.db.getRepository('fields').findOne({
+              filter: {
+                collectionName: collection.name,
+                key: field.key,
+              },
+            });
+            sort = originalField ? originalField.get('sort') : 0;
+          }
+
+          await ctx.db.getRepository('fields').create({
+            values: {
+              ...field.toJSON(),
+              id: undefined,
+              collection_id: newCollection.id,
+              collectionName: newCollection.name,
+              collection_name: newCollection.name,
+              key: undefined,
+              reverseKey: undefined,
+              sort: sort ?? 0,
+            },
+          });
+        }
 
         ctx.body = newCollection;
         ctx.status = 201;

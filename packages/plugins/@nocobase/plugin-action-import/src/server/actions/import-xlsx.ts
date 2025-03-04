@@ -14,7 +14,7 @@ import { Mutex } from 'async-mutex';
 import { XlsxImporter } from '../services/xlsx-importer';
 import { DataSource } from '@nocobase/data-source-manager';
 
-const IMPORT_LIMIT_COUNT = 2000;
+const IMPORT_LIMIT_COUNT = 15000;
 
 const mutex = new Mutex();
 
