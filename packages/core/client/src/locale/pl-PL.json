@@ -1144,7 +1144,7 @@
     "Record unique key": "Nagraj unikalny klucz",
     "Refresh data on close": "Odśwież dane po zamknięciu",
     "Reload application": "Załaduj ponownie aplikację",
-    "Remove": "Usunń",
+    "Remove": "Usuń",
     "Render Failed": "Renderowanie nie powiodło się",
     "Request body": "Treść żądania",
     "Request headers": "Nagłówki żądań",
@@ -1234,5 +1234,8 @@
     "Dropdown":"Lista rozwijana",
     "Pop-up":"Wyskakujące okienko",
     "Save mode":"Tryb zapisu",
-    "No data":"Brak danych"
+    "No data":"Brak danych",
+    "Action after successful submission":"Akcja po poprawnym wysłaniu",
+    "Stay on the current popup or page":"Zostań na aktualnym oknie lub stronie",
+    "Return to the previous popup or page":"Wróć do poprzedniego okna lub strony"
 }
