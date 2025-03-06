@@ -1033,7 +1033,7 @@
     "Divide by": "Podziel przez",
     "Docs": "Dokumenty",
     "Done": "Zrobione",
-    "Download": "Pobierać",
+    "Download": "Pobierz",
     "Download logs": "Pobierz logi",
     "Drag and drop the file here or click to upload": "Przeciągnij i upuść plik tutaj lub kliknij, aby przesłać",
     "Duplicate and continue": "Duplikuj i kontynuuj",
@@ -1237,5 +1237,6 @@
     "No data":"Brak danych",
     "Action after successful submission":"Akcja po poprawnym wysłaniu",
     "Stay on the current popup or page":"Zostań na aktualnym oknie lub stronie",
-    "Return to the previous popup or page":"Wróć do poprzedniego okna lub strony"
+    "Return to the previous popup or page":"Wróć do poprzedniego okna lub strony",
+    "The {{type}} \"{{name}}\" may have been deleted. Please remove this {{blockType}}.": "To {{type}} \"{{name}}\" zostało usunięnte. Usuń pole {{blockType}}."
 }
