@@ -1238,5 +1238,7 @@
     "Action after successful submission":"Akcja po poprawnym wysłaniu",
     "Stay on the current popup or page":"Zostań na aktualnym oknie lub stronie",
     "Return to the previous popup or page":"Wróć do poprzedniego okna lub strony",
-    "The {{type}} \"{{name}}\" may have been deleted. Please remove this {{blockType}}.": "To {{type}} \"{{name}}\" zostało usunięnte. Usuń pole {{blockType}}."
+    "The {{type}} \"{{name}}\" may have been deleted. Please remove this {{blockType}}.": "To {{type}} \"{{name}}\" zostało usunięnte. Usuń pole {{blockType}}.",
+    "Math.js comes with a large set of built-in functions and constants, and offers an integrated solution to work with different data types.":"Math.js zawiera duży zestaw wbudowanych funkcji i stałych oraz oferuje zintegrowane rozwiązanie do pracy z różnymi typami danych.",
+    "Simple string replacement, can be used to interpolate variables in a string.": "Prosta zamiana ciągu znaków, może być stosowana do interpolacji zmiennych w ciągu znaków."
 }
