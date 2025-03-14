@@ -1,4 +1,0 @@
-{
-  "field-name-exists": "フィールド名 \"{{name}}\" は \"{{collectionName}}\" に既に存在します",
-  "field-is-depended-on-by-other": "{{fieldCollectionName}} の \"{{fieldName}}\" フィールドは削除できません"
-}
