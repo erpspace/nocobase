@@ -18,7 +18,7 @@ const { PluginGenerator } = require('../plugin-generator');
 module.exports = (cli) => {
   cli
     .command('create-plugin')
-    .argument('<name>')
+    .arguments('<name>')
     .allowUnknownOption()
     .action(async (name, options) => {
       const generator = new PluginGenerator({

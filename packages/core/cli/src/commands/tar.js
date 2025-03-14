@@ -19,7 +19,7 @@ module.exports = (cli) => {
   cli
     .command('tar')
     .allowUnknownOption()
-    .argument('[packages...]')
+    .arguments('[packages...]')
     .option('-v, --version', 'print version')
     .option('-c, --compile', 'compile the @nocobase/build package')
     .option('-w, --watch', 'watch compile the @nocobase/build package')
