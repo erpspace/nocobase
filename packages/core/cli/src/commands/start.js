@@ -108,6 +108,7 @@ module.exports = (cli) => {
       }
       const instances = opts.instances || process.env.CLUSTER_MODE;
       const instancesArgs = instances ? ['-i', instances] : [];
+      return;
       if (opts.daemon) {
         await run('pm2', [
           'start',

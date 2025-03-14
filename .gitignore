@@ -17,7 +17,6 @@ coverage
 .env.test
 docs-dist/
 .npmrc
-dist/
 docker/**/storage
 cache/diskstore-*
 **/.dumi/tmp
