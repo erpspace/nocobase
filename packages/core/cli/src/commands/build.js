@@ -19,7 +19,7 @@ module.exports = (cli) => {
   cli
     .command('build')
     .allowUnknownOption()
-    .argument('[packages...]')
+    .arguments('[packages...]')
     .option('-v, --version', 'print version')
     .option('-c, --compile', 'compile the @nocobase/build package')
     .option('-r, --retry', 'retry the last failed package')
