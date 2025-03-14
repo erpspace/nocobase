@@ -20,8 +20,8 @@ const glob = require('fast-glob');
 module.exports = (cli) => {
   cli
     .command('doc')
-    .argument('[dev|build|serve]')
-    .argument('[packages]')
+    .arguments('[dev|build|serve]')
+    .arguments('[packages]')
     .option('--lang [lang]')
     .allowUnknownOption()
     .action((command, pkg, options) => {

@@ -164,12 +164,7 @@ const filterArgv = () => {
  * @param {Command} cli
  */
 module.exports = (cli) => {
-  const e2e = cli.command('e2e').hook('preAction', () => {
-    if (process.env.APP_BASE_URL) {
-      process.env.APP_BASE_URL = process.env.APP_BASE_URL.replace('localhost', '127.0.0.1');
-      console.log('APP_BASE_URL:', process.env.APP_BASE_URL);
-    }
-  });
+  const e2e = cli.command('e2e');
 
   e2e
     .command('test')
