@@ -40,7 +40,7 @@ describe('workflow > triggers > collection', () => {
     TagRepo = db.getCollection('tags').repository;
 
     const user = await app.db.getRepository('users').findOne();
-    agent = app.agent().login(user);
+    agent = await app.agent().login(user);
   });
 
   afterEach(() => app.destroy());
@@ -160,6 +160,23 @@ describe('workflow > triggers > collection', () => {
       const executions = await workflow.getExecutions();
       expect(executions.length).toBe(1);
       expect(executions[0].context.data.title).toBe('c1');
+    });
+
+    it('skipWorkflow', async () => {
+      const workflow = await WorkflowModel.create({
+        enabled: true,
+        sync: true,
+        type: 'collection',
+        config: {
+          mode: 1,
+          collection: 'posts',
+        },
+      });
+
+      const post = await PostRepo.create({ values: { title: 't1' }, context: { skipWorkflow: true } });
+
+      const executions = await workflow.getExecutions();
+      expect(executions.length).toBe(0);
     });
   });
 

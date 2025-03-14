@@ -94,7 +94,7 @@ export class FileCollectionTemplate extends CollectionTemplate {
         uiSchema: {
           type: 'string',
           title: `{{t("Path", { ns: "${NAMESPACE}" })}}`,
-          'x-component': 'Input',
+          'x-component': 'TextAreaWithGlobalScope',
           'x-read-pretty': true,
         },
       },
@@ -104,7 +104,6 @@ export class FileCollectionTemplate extends CollectionTemplate {
         type: 'text',
         name: 'url',
         deletable: false,
-        length: 1024,
         uiSchema: {
           type: 'string',
           title: `{{t("URL")}}`,

@@ -32,6 +32,7 @@ import {
   toValueItem as toValueItemDefault,
   useBeforeUpload,
   useUploadProps,
+  encodeFileURL,
 } from './shared';
 import { useStyles } from './style';
 import type { ComposedUpload, DraggerProps, DraggerV2Props, UploadProps } from './type';
@@ -41,8 +42,11 @@ attachmentFileTypes.add({
     return matchMimetype(file, 'image/*');
   },
   getThumbnailURL(file) {
+    if (file.preview) {
+      return encodeFileURL(file.preview);
+    }
     if (file.url) {
-      return `${file.url}${file.thumbnailRule || ''}`;
+      return encodeFileURL(`${file.url}${file.thumbnailRule || ''}`);
     }
     if (file.originFileObj) {
       return URL.createObjectURL(file.originFileObj);
@@ -61,9 +65,9 @@ attachmentFileTypes.add({
     return (
       <LightBox
         // discourageDownloads={true}
-        mainSrc={list[index]?.url}
-        nextSrc={list[(index + 1) % list.length]?.url}
-        prevSrc={list[(index + list.length - 1) % list.length]?.url}
+        mainSrc={encodeFileURL(list[index]?.url)}
+        nextSrc={encodeFileURL(list[(index + 1) % list.length]?.url)}
+        prevSrc={encodeFileURL(list[(index + list.length - 1) % list.length]?.url)}
         onCloseRequest={() => onSwitchIndex(null)}
         onMovePrevRequest={() => onSwitchIndex((index + list.length - 1) % list.length)}
         onMoveNextRequest={() => onSwitchIndex((index + 1) % list.length)}
@@ -86,26 +90,27 @@ attachmentFileTypes.add({
   },
 });
 
-const iframePreviewSupportedTypes = ['application/pdf', 'audio/*', 'image/*', 'video/*'];
+const iframePreviewSupportedTypes = ['application/pdf', 'audio/*', 'image/*', 'video/*', 'text/*'];
 
 function IframePreviewer({ index, list, onSwitchIndex }) {
   const { t } = useTranslation();
   const file = list[index];
+  const url = encodeFileURL(file.url);
   const onOpen = useCallback(
     (e) => {
       e.preventDefault();
       e.stopPropagation();
-      window.open(file.url);
+      window.open(url);
     },
-    [file],
+    [url],
   );
   const onDownload = useCallback(
     (e) => {
       e.preventDefault();
       e.stopPropagation();
-      saveAs(file.url, `${file.title}${file.extname}`);
+      saveAs(url, `${file.title}${file.extname}`);
     },
-    [file],
+    [file.extname, file.title, url],
   );
   const onClose = useCallback(() => {
     onSwitchIndex(null);
@@ -145,7 +150,7 @@ function IframePreviewer({ index, list, onSwitchIndex }) {
       >
         {iframePreviewSupportedTypes.some((type) => matchMimetype(file, type)) ? (
           <iframe
-            src={file.url}
+            src={url}
             style={{
               width: '100%',
               maxHeight: '90vh',
@@ -176,7 +181,7 @@ function InternalUpload(props: UploadProps) {
   return <AntdUpload {...useUploadProps(rest)} onChange={onFileChange} />;
 }
 
-function ReadPretty({ value, onChange, disabled, multiple, size }: UploadProps) {
+function ReadPretty({ value, onChange, disabled, multiple, size, ...others }: UploadProps) {
   const { wrapSSR, hashId, componentCls: prefixCls } = useStyles();
   const useUploadStyleVal = (useUploadStyle as any).default ? (useUploadStyle as any).default : useUploadStyle;
   // 加载 antd 的样式
@@ -192,7 +197,14 @@ function ReadPretty({ value, onChange, disabled, multiple, size }: UploadProps) 
       )}
     >
       <div className={cls(`${prefixCls}-list`, `${prefixCls}-list-picture-card`)}>
-        <AttachmentList disabled={disabled} readPretty multiple={multiple} value={value} onChange={onChange} />
+        <AttachmentList
+          disabled={disabled}
+          readPretty
+          multiple={multiple}
+          value={value}
+          onChange={onChange}
+          {...others}
+        />
       </div>
     </div>,
   );
@@ -223,7 +235,7 @@ function DefaultThumbnailPreviewer({ file }) {
 }
 
 function AttachmentListItem(props) {
-  const { file, disabled, onPreview, onDelete: propsOnDelete, readPretty } = props;
+  const { file, disabled, onPreview, onDelete: propsOnDelete, readPretty, showFileName } = props;
   const { componentCls: prefixCls } = useStyles();
   const { t } = useTranslation();
   const handleClick = useCallback(
@@ -240,19 +252,19 @@ function AttachmentListItem(props) {
   const onDownload = useCallback(() => {
     saveAs(file.url, `${file.title}${file.extname}`);
   }, [file]);
-
   const { ThumbnailPreviewer = DefaultThumbnailPreviewer } = attachmentFileTypes.getTypeByFile(file) ?? {};
-
   const item = [
     <span key="thumbnail" className={`${prefixCls}-list-item-thumbnail`}>
       <ThumbnailPreviewer file={file} />
     </span>,
-    <span key="title" className={`${prefixCls}-list-item-name`} title={file.title}>
-      {file.status === 'uploading' ? t('Uploading') : file.title}
-    </span>,
+    showFileName !== false && file.title ? (
+      <span key="title" className={`${prefixCls}-list-item-name`} title={file.title}>
+        {file.status === 'uploading' ? t('Uploading') : file.title}
+      </span>
+    ) : null,
   ];
   const wrappedItem = file.url ? (
-    <a target="_blank" rel="noopener noreferrer" href={file.url} onClick={handleClick}>
+    <a target="_blank" rel="noopener noreferrer" href={encodeFileURL(file.url)} onClick={handleClick}>
       {item}
     </a>
   ) : (
@@ -285,9 +297,13 @@ function AttachmentListItem(props) {
       )}
     </div>
   );
-
   return (
-    <div className={`${prefixCls}-list-picture-card-container ${prefixCls}-list-item-container`}>
+    <div
+      style={{
+        marginBottom: showFileName !== false && file.title ? '28px' : '0px',
+      }}
+      className={`${prefixCls}-list-picture-card-container ${prefixCls}-list-item-container`}
+    >
       {file.status === 'error' ? (
         <Tooltip title={file.response} getPopupContainer={(node) => node.parentNode as HTMLElement}>
           {content}
@@ -309,10 +325,9 @@ function Previewer({ index, onSwitchIndex, list }) {
 }
 
 export function AttachmentList(props) {
-  const { disabled, multiple, value, onChange, readPretty } = props;
+  const { disabled, multiple, value, onChange, readPretty, showFileName } = props;
   const [fileList, setFileList] = useState<any[]>([]);
   const [preview, setPreview] = useState<number>(null);
-
   useEffect(() => {
     const list = toFileList(value);
     setFileList(list);
@@ -347,6 +362,7 @@ export function AttachmentList(props) {
           onPreview={onPreview}
           onDelete={onDelete}
           readPretty={readPretty}
+          showFileName={showFileName}
         />
       ))}
       <Previewer index={preview} onSwitchIndex={setPreview} list={fileList} />
@@ -376,7 +392,7 @@ export function Uploader({ rules, ...props }: UploadProps) {
     } else {
       field.setFeedback({});
     }
-  }, [field, pendingList]);
+  }, [field, pendingList, t]);
 
   const onUploadChange = useCallback(
     (info) => {

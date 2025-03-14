@@ -7,12 +7,14 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
-import { uid } from '@nocobase/utils';
 import path from 'path';
+import { uid } from '@nocobase/utils';
 
 export function getFilename(req, file, cb) {
-  const baseName = path.basename(file.originalname, path.extname(file.originalname));
-  cb(null, `${baseName}-${uid(6)}${path.extname(file.originalname)}`);
+  const originalname = Buffer.from(file.originalname, 'binary').toString('utf8');
+  // Filename in Windows cannot contain the following characters: < > ? * | : " \ /
+  const baseName = path.basename(originalname.replace(/[<>?*|:"\\/]/g, '-'), path.extname(originalname));
+  cb(null, `${baseName}-${uid(6)}${path.extname(originalname)}`);
 }
 
 export const cloudFilenameGetter = (storage) => (req, file, cb) => {
