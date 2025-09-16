@@ -1,0 +1,13 @@
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+import { CommonFormItemCheckerOptions } from './common';
+export interface CollectionFieldCheckOptions extends CommonFormItemCheckerOptions {
+    field: string;
+}
+export declare function collectionFieldChecker(options: CollectionFieldCheckOptions): Promise<void>;

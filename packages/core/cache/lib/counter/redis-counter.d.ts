@@ -1,0 +1,23 @@
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+import { Counter as ICounter } from '.';
+import { Cache } from '../cache';
+/**
+ * @experimental
+ */
+export declare class RedisCounter implements ICounter {
+    cache: Cache;
+    scriptSha: string;
+    constructor(cache: Cache);
+    private get store();
+    get(key: string): Promise<number>;
+    incr(key: string, ttl?: number): Promise<number>;
+    incrby(key: string, value: number, ttl?: number): Promise<number>;
+    reset(key: string): Promise<void>;
+}

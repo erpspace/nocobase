@@ -1,0 +1,36 @@
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __reExport = (target, mod, secondTarget) => (__copyProps(target, mod, "default"), secondTarget && __copyProps(secondTarget, mod, "default"));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+var e2e_exports = {};
+module.exports = __toCommonJS(e2e_exports);
+__reExport(e2e_exports, require("./e2eUtils"), module.exports);
+__reExport(e2e_exports, require("./templatesOfCollection"), module.exports);
+__reExport(e2e_exports, require("./templatesOfPage"), module.exports);
+__reExport(e2e_exports, require("./templates"), module.exports);
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  ...require("./e2eUtils"),
+  ...require("./templatesOfCollection"),
+  ...require("./templatesOfPage"),
+  ...require("./templates")
+});
