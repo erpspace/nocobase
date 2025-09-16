@@ -1,0 +1,39 @@
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+import { Collection } from '@nocobase/database';
+declare function collectionToSwaggerObject(collection: Collection, options: any): {
+    paths: any;
+    components: {
+        parameters: {};
+        schemas: {
+            [x: string]: {
+                type: string;
+                properties: {};
+                allOf?: undefined;
+            } | {
+                allOf: ({
+                    $ref: string;
+                    type?: undefined;
+                    properties?: undefined;
+                } | {
+                    type: string;
+                    properties: any;
+                    $ref?: undefined;
+                })[];
+                type?: undefined;
+                properties?: undefined;
+            };
+        };
+    };
+    tags: {
+        name: string;
+        description: string;
+    }[];
+};
+export default collectionToSwaggerObject;
