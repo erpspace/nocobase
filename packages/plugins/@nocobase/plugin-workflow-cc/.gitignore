@@ -1,5 +1,4 @@
 node_modules/
-lib/
 esm/
 es/
 .env
@@ -17,7 +16,6 @@ coverage
 .env.test
 docs-dist/
 .npmrc
-dist/
 docker/**/storage
 cache/diskstore-*
 *.nbdump
