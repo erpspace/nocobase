@@ -69,9 +69,7 @@ export function AuthLayout() {
       <div style={{ position: 'fixed', top: '2em', right: '2em' }}>
         <SwitchLanguage />
       </div>
-      <h1 style={{ textAlign: 'center' }}>
-        <ReadPretty.TextArea value={t(data?.data?.title)} />
-      </h1>
+      <h1 style={{ textAlign: 'center' }}>ERPSPACE</h1>
       <AuthenticatorsContextProvider>
         <Outlet />
       </AuthenticatorsContextProvider>
