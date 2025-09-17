@@ -59,8 +59,7 @@
     "@ant-design/icons": "^5.6.1"
   },
   "config": {
-    "ghooks": {
-    }
+    "ghooks": {}
   },
   "lint-staged": {
     "*.{js,json}": [
@@ -94,5 +93,7 @@
     "node": "20.14.0",
     "yarn": "1.22.19"
   },
-  "dependencies": {}
+  "dependencies": {
+    "ioredis": "^5.3.2"
+  }
 }

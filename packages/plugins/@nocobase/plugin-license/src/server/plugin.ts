@@ -26,11 +26,11 @@ export class PluginLicenseServer extends Plugin {
         },
         'license-key': async (ctx, next) => {
           const { licenseKey } = ctx.request.body;
-          try {
-            keyDecrypt(licenseKey);
-          } catch (e) {
-            return ctx.throw(500, ctx.t('Invalid license key', { ns: '@nocobase/plugin-license' }));
-          }
+          // try {
+          //   keyDecrypt(licenseKey);
+          // } catch (e) {
+          //   return ctx.throw(500, ctx.t('Invalid license key', { ns: '@nocobase/plugin-license' }));
+          // }
           await saveLicenseKey(licenseKey);
           await next();
         },
