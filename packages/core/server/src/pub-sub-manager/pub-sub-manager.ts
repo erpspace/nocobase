@@ -18,6 +18,18 @@ import {
   type PubSubManagerSubscribeOptions,
 } from './types';
 
+// Import cluster mode components
+let ClusterModeManager: any = null;
+let RedisPubSubAdapter: any = null;
+try {
+  const clusterMode = require('../cluster-mode/cluster-mode-manager');
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisPubSub = require('../cluster-mode/redis-pub-sub-adapter');
+  RedisPubSubAdapter = redisPubSub.RedisPubSubAdapter;
+} catch (error) {
+  // Cluster mode components not available
+}
+
 export const createPubSubManager = (app: Application, options: PubSubManagerOptions) => {
   const pubSubManager = new PubSubManager(options);
   app.on('afterStart', async () => {
@@ -37,6 +49,17 @@ export class PubSubManager {
   constructor(protected options: PubSubManagerOptions = {}) {
     this.publisherId = uid();
     this.handlerManager = new HandlerManager(this.publisherId);
+    
+    // Auto-initialize adapter based on cluster mode
+    this.initializeAdapter();
+  }
+
+  private initializeAdapter() {
+    if (ClusterModeManager?.isEnabled() && RedisPubSubAdapter) {
+      // Use Redis adapter in cluster mode
+      this.setAdapter(new RedisPubSubAdapter());
+    }
+    // If no adapter is set, it will be set manually via setAdapter()
   }
 
   get channelPrefix() {

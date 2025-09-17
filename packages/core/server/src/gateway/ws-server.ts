@@ -18,6 +18,18 @@ import { Logger } from '@nocobase/logger';
 import EventEmitter from 'events';
 import { parse } from 'url';
 
+// Import cluster mode components
+let ClusterModeManager: any = null;
+let RedisWebSocketManager: any = null;
+try {
+  const clusterMode = require('../cluster-mode/cluster-mode-manager');
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisWS = require('../cluster-mode/redis-websocket-manager');
+  RedisWebSocketManager = redisWS.RedisWebSocketManager;
+} catch (error) {
+  // Cluster mode components not available
+}
+
 declare class WebSocketWithId extends WebSocket {
   id: string;
 }
@@ -40,10 +52,14 @@ export class WSServer extends EventEmitter {
   wss: WebSocket.Server;
   webSocketClients = new Map<string, WebSocketClient>();
   logger: Logger;
+  private redisWSManager: any = null;
 
   constructor() {
     super();
     this.wss = new WSS({ noServer: true });
+    
+    // Initialize Redis WebSocket manager if cluster mode is enabled
+    this.initializeRedisWSManager();
 
     this.wss.on('connection', (ws: WebSocketWithId, request: IncomingMessage) => {
       const client = this.addNewConnection(ws, request);
@@ -164,6 +180,76 @@ export class WSServer extends EventEmitter {
     });
   }
 
+  private initializeRedisWSManager() {
+    if (ClusterModeManager?.isEnabled() && RedisWebSocketManager) {
+      this.redisWSManager = new RedisWebSocketManager(process.env.INSTANCE_ID || nanoid());
+      
+      // Set up event handlers for Redis WebSocket manager
+      this.redisWSManager.on('clientConnected', (data: any) => {
+        // Handle client connected on another instance
+        console.log(`Client connected on another instance: ${data.clientId}`);
+      });
+
+      this.redisWSManager.on('clientDisconnected', (data: any) => {
+        // Handle client disconnected on another instance
+        console.log(`Client disconnected on another instance: ${data.clientId}`);
+      });
+
+      this.redisWSManager.on('websocketMessage', (data: any) => {
+        // Handle WebSocket message from another instance
+        this.handleCrossInstanceMessage(data);
+      });
+
+      this.redisWSManager.on('broadcastMessage', (data: any) => {
+        // Handle broadcast message from another instance
+        this.handleCrossInstanceBroadcast(data);
+      });
+    }
+  }
+
+  async start() {
+    if (this.redisWSManager) {
+      await this.redisWSManager.connect();
+    }
+  }
+
+  async stop() {
+    if (this.redisWSManager) {
+      await this.redisWSManager.close();
+    }
+  }
+
+  private handleCrossInstanceMessage(data: any) {
+    const { app, message, targetClientId, targetTags } = data;
+    
+    if (targetClientId) {
+      // Send to specific client
+      const client = this.webSocketClients.get(targetClientId);
+      if (client) {
+        client.ws.send(JSON.stringify(message));
+      }
+    } else if (targetTags) {
+      // Send to clients with specific tags
+      for (const [clientId, client] of this.webSocketClients) {
+        const hasMatchingTag = targetTags.some((tag: string) => client.tags.has(tag));
+        if (hasMatchingTag) {
+          client.ws.send(JSON.stringify(message));
+        }
+      }
+    }
+  }
+
+  private handleCrossInstanceBroadcast(data: any) {
+    const { app, message, targetTags } = data;
+    
+    // Broadcast to all clients or clients with specific tags
+    for (const [clientId, client] of this.webSocketClients) {
+      if (!targetTags || targetTags.some((tag: string) => client.tags.has(tag))) {
+        client.ws.send(JSON.stringify(message));
+      }
+    }
+  }
+
   bindAppWSEvents(app) {
     if (app.listenerCount('ws:setTag') > 0) {
       return;
@@ -208,16 +294,33 @@ export class WSServer extends EventEmitter {
     const id = nanoid();
     ws.id = id;
 
-    this.webSocketClients.set(id, {
+    const client: WebSocketClient = {
       ws,
-      tags: new Set(),
+      tags: new Set<string>(),
       url: request.url,
       headers: request.headers,
       id,
-    });
+    };
 
-    this.setClientApp(this.webSocketClients.get(id));
-    return this.webSocketClients.get(id);
+    this.webSocketClients.set(id, client);
+
+    this.setClientApp(client);
+
+    // Sync with Redis if cluster mode is enabled
+    if (this.redisWSManager) {
+      this.redisWSManager.addConnection({
+        id: client.id,
+        tags: client.tags,
+        url: client.url,
+        headers: client.headers,
+        app: client.app || 'main',
+        timestamp: Date.now(),
+      }).catch((error: any) => {
+        console.error('Failed to sync client connection to Redis:', error);
+      });
+    }
+
+    return client;
   }
 
   setClientTag(clientId: string, tagKey: string, tagValue: string) {
@@ -260,7 +363,15 @@ export class WSServer extends EventEmitter {
 
   removeConnection(id: string) {
     console.log(`client disconnected ${id}`);
+    const client = this.webSocketClients.get(id);
     this.webSocketClients.delete(id);
+
+    // Sync with Redis if cluster mode is enabled
+    if (this.redisWSManager && client) {
+      this.redisWSManager.removeConnection(id, client.app || 'main').catch((error: any) => {
+        console.error('Failed to sync client disconnection to Redis:', error);
+      });
+    }
   }
 
   sendMessageToConnection(client: WebSocketClient, sendMessage: object) {
@@ -269,6 +380,42 @@ export class WSServer extends EventEmitter {
 
   sendToConnectionsByTag(tagName: string, tagValue: string, sendMessage: object) {
     this.sendToConnectionsByTags([{ tagName, tagValue }], sendMessage);
+  }
+
+  // Enhanced methods for cluster mode
+  async sendToClient(clientId: string, message: object) {
+    const client = this.webSocketClients.get(clientId);
+    if (client) {
+      // Send to local client
+      client.ws.send(JSON.stringify(message));
+    } else if (this.redisWSManager) {
+      // Send to client on another instance
+      await this.redisWSManager.sendToClient('main', clientId, message);
+    }
+  }
+
+  async sendToClientsByTag(tagKey: string, tagValue: string, message: object) {
+    // Send to local clients
+    this.sendToConnectionsByTag(tagKey, tagValue, message);
+
+    // Send to clients on other instances
+    if (this.redisWSManager) {
+      await this.redisWSManager.sendToClientsByTag('main', tagKey, tagValue, message);
+    }
+  }
+
+  async broadcastToApp(app: string, message: object) {
+    // Send to local clients
+    for (const [clientId, client] of this.webSocketClients) {
+      if (client.app === app) {
+        client.ws.send(JSON.stringify(message));
+      }
+    }
+
+    // Send to clients on other instances
+    if (this.redisWSManager) {
+      await this.redisWSManager.broadcastToApp(app, message);
+    }
   }
 
   /**
@@ -286,12 +433,6 @@ export class WSServer extends EventEmitter {
     });
   }
 
-  sendToClient(clientId: string, sendMessage: object) {
-    const client = this.webSocketClients.get(clientId);
-    if (client) {
-      this.sendMessageToConnection(client, sendMessage);
-    }
-  }
 
   sendToAppUser(appName: string, userId: string, message: object) {
     this.sendToConnectionsByTags(

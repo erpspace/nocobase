@@ -10,6 +10,18 @@
 import { Registry } from '@nocobase/utils';
 import { Mutex, MutexInterface, E_CANCELED } from 'async-mutex';
 
+// Import cluster mode components
+let ClusterModeManager: any = null;
+let RedisLockAdapter: any = null;
+try {
+  const clusterMode = require('../../server/src/cluster-mode/cluster-mode-manager');
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisLock = require('./redis-lock-adapter');
+  RedisLockAdapter = redisLock.RedisLockAdapter;
+} catch (error) {
+  // Cluster mode components not available
+}
+
 export type Releaser = () => void | Promise<void>;
 
 export interface ILock {
@@ -120,6 +132,13 @@ export class LockManager {
     this.registry.register('local', {
       Adapter: LocalLockAdapter,
     });
+
+    // Register Redis adapter if cluster mode is enabled
+    if (ClusterModeManager?.isEnabled() && RedisLockAdapter) {
+      this.registry.register('redis', {
+        Adapter: RedisLockAdapter,
+      });
+    }
   }
 
   registerAdapter(name: string, adapterConfig: LockAdapterConfig) {
@@ -127,7 +146,16 @@ export class LockManager {
   }
 
   private async getAdapter(): Promise<ILockAdapter> {
-    const type = this.options.defaultAdapter || 'local';
+    // Auto-select adapter based on cluster mode
+    let type = this.options.defaultAdapter;
+    if (!type) {
+      if (ClusterModeManager?.isEnabled() && this.registry.get('redis')) {
+        type = 'redis';
+      } else {
+        type = 'local';
+      }
+    }
+
     let client = this.adapters.get(type);
     if (!client) {
       const adapter = this.registry.get(type);

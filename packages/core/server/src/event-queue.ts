@@ -16,6 +16,18 @@ import Application from './application';
 import { SystemLogger } from '@nocobase/logger';
 import { sleep } from '@nocobase/utils';
 
+// Import cluster mode components
+let ClusterModeManager: any = null;
+let RedisEventQueueAdapter: any = null;
+try {
+  const clusterMode = require('./cluster-mode/cluster-mode-manager');
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisEventQueue = require('./cluster-mode/redis-event-queue-adapter');
+  RedisEventQueueAdapter = redisEventQueue.RedisEventQueueAdapter;
+} catch (error) {
+  // Cluster mode components not available
+}
+
 export const QUEUE_DEFAULT_INTERVAL = 250;
 export const QUEUE_DEFAULT_CONCURRENCY = 1;
 export const QUEUE_DEFAULT_ACK_TIMEOUT = 15_000;
@@ -328,7 +340,8 @@ export class EventQueue {
     protected app: Application,
     protected options: EventQueueOptions = {},
   ) {
-    this.setAdapter(new MemoryEventQueueAdapter({ appName: this.app.name, logger: this.app.logger }));
+    // Initialize adapter based on cluster mode
+    this.initializeAdapter();
 
     app.on('afterStart', async () => {
       await this.connect();
@@ -337,6 +350,16 @@ export class EventQueue {
       app.logger.info('[queue] gracefully shutting down...');
       await this.close();
     });
+  }
+
+  private initializeAdapter() {
+    if (ClusterModeManager?.isEnabled() && RedisEventQueueAdapter) {
+      // Use Redis adapter in cluster mode
+      this.setAdapter(new RedisEventQueueAdapter());
+    } else {
+      // Use memory adapter as fallback
+      this.setAdapter(new MemoryEventQueueAdapter({ appName: this.app.name, logger: this.app.logger }));
+    }
   }
   getFullChannel(channel: string) {
     return [this.app.name, this.channelPrefix, channel].filter(Boolean).join('.');
