@@ -6,5 +6,6 @@
  * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
-export * from './lock-manager';
-export { default } from './lock-manager';
+export { default as LockManager, LockManagerOptions } from './lock-manager';
+export { RedisLockAdapter } from './redis-lock-adapter';
+export { LockAcquireError, LockAbortError } from './lock-manager';

@@ -23,6 +23,8 @@ export const useCurrentAppInfo = () => {
       version: string;
       exportLimit?: number;
       name: string;
+      instanceId: string;
+      processId: number;
     };
   }>(CurrentAppInfoContext);
 };

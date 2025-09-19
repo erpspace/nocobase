@@ -41,6 +41,11 @@ const SettingsMenu: React.FC<{
         <div style={{ cursor: 'text' }}>
           <div style={{ color: token.colorText }}>NocoBase</div>
           <div style={{ fontSize: '0.8em', color: token.colorTextDescription }}>v{data?.data?.version}</div>
+          {data?.data?.instanceId && (
+            <div style={{ fontSize: '0.7em', color: token.colorTextDescription, marginTop: '2px' }}>
+              Instance: {data.data.instanceId.substring(0, 8)}... (PID: {data.data.processId})
+            </div>
+          )}
         </div>
       ),
     },
