@@ -37,6 +37,15 @@ __export(lock_manager_exports, {
 module.exports = __toCommonJS(lock_manager_exports);
 var import_utils = require("@nocobase/utils");
 var import_async_mutex = require("async-mutex");
+let ClusterModeManager = null;
+let RedisLockAdapter = null;
+try {
+  const clusterMode = require("../../server/src/cluster-mode/cluster-mode-manager");
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisLock = require("./redis-lock-adapter");
+  RedisLockAdapter = redisLock.RedisLockAdapter;
+} catch (error) {
+}
 const _LockAbortError = class _LockAbortError extends Error {
   constructor(message, options) {
     super(message, options);
@@ -121,6 +130,11 @@ const _LockManager = class _LockManager {
     this.registry.register("local", {
       Adapter: LocalLockAdapter
     });
+    if ((ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) && RedisLockAdapter) {
+      this.registry.register("redis", {
+        Adapter: RedisLockAdapter
+      });
+    }
   }
   registry = new import_utils.Registry();
   adapters = /* @__PURE__ */ new Map();
@@ -128,7 +142,14 @@ const _LockManager = class _LockManager {
     this.registry.register(name, adapterConfig);
   }
   async getAdapter() {
-    const type = this.options.defaultAdapter || "local";
+    let type = this.options.defaultAdapter;
+    if (!type) {
+      if ((ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) && this.registry.get("redis")) {
+        type = "redis";
+      } else {
+        type = "local";
+      }
+    }
     let client = this.adapters.get(type);
     if (!client) {
       const adapter = this.registry.get(type);

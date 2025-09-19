@@ -24,32 +24,19 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var cache_exports = {};
-__export(cache_exports, {
-  cacheManager: () => cacheManager
+var cluster_mode_exports = {};
+__export(cluster_mode_exports, {
+  ClusterModeManager: () => import_cluster_mode_manager.ClusterModeManager,
+  RedisEventQueueAdapter: () => import_redis_event_queue_adapter.RedisEventQueueAdapter,
+  RedisPubSubAdapter: () => import_redis_pub_sub_adapter.RedisPubSubAdapter
 });
-module.exports = __toCommonJS(cache_exports);
-let ClusterModeManager = null;
-try {
-  ClusterModeManager = require("@nocobase/server/src/cluster-mode/cluster-mode-manager").ClusterModeManager;
-} catch (error) {
-}
-const cacheManager = {
-  defaultStore: (ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) ? "redis" : process.env.CACHE_DEFAULT_STORE || "memory",
-  stores: {
-    memory: {
-      store: "memory",
-      max: parseInt(process.env.CACHE_MEMORY_MAX) || 2e3
-    },
-    ...process.env.CACHE_REDIS_URL || (ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) ? {
-      redis: {
-        url: process.env.CACHE_REDIS_URL || process.env.REDIS_URL || "redis://localhost:6379",
-        keyPrefix: (ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) ? ClusterModeManager.getRedisKeyPrefix() + "cache:" : void 0
-      }
-    } : {}
-  }
-};
+module.exports = __toCommonJS(cluster_mode_exports);
+var import_cluster_mode_manager = require("./cluster-mode-manager");
+var import_redis_pub_sub_adapter = require("./redis-pub-sub-adapter");
+var import_redis_event_queue_adapter = require("./redis-event-queue-adapter");
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  cacheManager
+  ClusterModeManager,
+  RedisEventQueueAdapter,
+  RedisPubSubAdapter
 });

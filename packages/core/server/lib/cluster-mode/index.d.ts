@@ -6,7 +6,7 @@
  * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
-
-export { default as LockManager, LockManagerOptions } from './lock-manager';
-export { RedisLockAdapter } from './redis-lock-adapter';
-export { LockAcquireError, LockAbortError } from './lock-manager';
+export { ClusterModeManager } from './cluster-mode-manager';
+export { RedisPubSubAdapter } from './redis-pub-sub-adapter';
+export { RedisEventQueueAdapter } from './redis-event-queue-adapter';
+export type { RedisConfig } from './cluster-mode-manager';

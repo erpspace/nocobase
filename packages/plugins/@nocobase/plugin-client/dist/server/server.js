@@ -121,7 +121,9 @@ class PluginClientServer extends import_server.Plugin {
             version: await ctx.app.version.get(),
             lang,
             name: ctx.app.name,
-            theme: ((_a = currentUser == null ? void 0 : currentUser.systemSettings) == null ? void 0 : _a.theme) || ((_b = systemSetting == null ? void 0 : systemSetting.options) == null ? void 0 : _b.theme) || "default"
+            theme: ((_a = currentUser == null ? void 0 : currentUser.systemSettings) == null ? void 0 : _a.theme) || ((_b = systemSetting == null ? void 0 : systemSetting.options) == null ? void 0 : _b.theme) || "default",
+            instanceId: ctx.app.instanceId,
+            processId: process.pid
           };
           if (process.env["EXPORT_LIMIT"]) {
             info.exportLimit = parseInt(process.env["EXPORT_LIMIT"]);

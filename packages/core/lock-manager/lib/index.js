@@ -25,7 +25,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __reExport = (target, mod, secondTarget) => (__copyProps(target, mod, "default"), secondTarget && __copyProps(secondTarget, mod, "default"));
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
   // If the importer is in node compatibility mode or this is not an ESM
   // file that has been converted to a CommonJS file using a Babel-
@@ -37,12 +36,21 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var src_exports = {};
 __export(src_exports, {
-  default: () => import_lock_manager.default
+  LockAbortError: () => import_lock_manager2.LockAbortError,
+  LockAcquireError: () => import_lock_manager2.LockAcquireError,
+  LockManager: () => import_lock_manager.default,
+  LockManagerOptions: () => import_lock_manager.LockManagerOptions,
+  RedisLockAdapter: () => import_redis_lock_adapter.RedisLockAdapter
 });
 module.exports = __toCommonJS(src_exports);
-__reExport(src_exports, require("./lock-manager"), module.exports);
 var import_lock_manager = __toESM(require("./lock-manager"));
+var import_redis_lock_adapter = require("./redis-lock-adapter");
+var import_lock_manager2 = require("./lock-manager");
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  ...require("./lock-manager")
+  LockAbortError,
+  LockAcquireError,
+  LockManager,
+  LockManagerOptions,
+  RedisLockAdapter
 });

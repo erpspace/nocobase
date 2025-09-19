@@ -27,7 +27,13 @@ export declare class WSServer extends EventEmitter {
     wss: WebSocket.Server;
     webSocketClients: Map<string, WebSocketClient>;
     logger: Logger;
+    private redisWSManager;
     constructor();
+    private initializeRedisWSManager;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    private handleCrossInstanceMessage;
+    private handleCrossInstanceBroadcast;
     bindAppWSEvents(app: any): void;
     addNewConnection(ws: WebSocketWithId, request: IncomingMessage): WebSocketClient;
     setClientTag(clientId: string, tagKey: string, tagValue: string): void;
@@ -36,6 +42,9 @@ export declare class WSServer extends EventEmitter {
     removeConnection(id: string): void;
     sendMessageToConnection(client: WebSocketClient, sendMessage: object): void;
     sendToConnectionsByTag(tagName: string, tagValue: string, sendMessage: object): void;
+    sendToClient(clientId: string, message: object): Promise<void>;
+    sendToClientsByTag(tagKey: string, tagValue: string, message: object): Promise<void>;
+    broadcastToApp(app: string, message: object): Promise<void>;
     /**
      * Send message to clients that match all the given tag conditions
      * @param tags Array of tag conditions, each condition is an object with tagName and tagValue
@@ -45,7 +54,6 @@ export declare class WSServer extends EventEmitter {
         tagName: string;
         tagValue: string;
     }>, sendMessage: object): void;
-    sendToClient(clientId: string, sendMessage: object): void;
     sendToAppUser(appName: string, userId: string, message: object): void;
     loopThroughConnections(callback: (client: WebSocketClient) => void): void;
     close(): void;

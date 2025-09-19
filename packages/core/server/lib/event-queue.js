@@ -50,6 +50,15 @@ var import_events = require("events");
 var import_path = __toESM(require("path"));
 var import_promises = __toESM(require("fs/promises"));
 var import_utils = require("@nocobase/utils");
+let ClusterModeManager = null;
+let RedisEventQueueAdapter = null;
+try {
+  const clusterMode = require("./cluster-mode/cluster-mode-manager");
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisEventQueue = require("./cluster-mode/redis-event-queue-adapter");
+  RedisEventQueueAdapter = redisEventQueue.RedisEventQueueAdapter;
+} catch (error) {
+}
 const QUEUE_DEFAULT_INTERVAL = 250;
 const QUEUE_DEFAULT_CONCURRENCY = 1;
 const QUEUE_DEFAULT_ACK_TIMEOUT = 15e3;
@@ -269,7 +278,7 @@ const _EventQueue = class _EventQueue {
   constructor(app, options = {}) {
     this.app = app;
     this.options = options;
-    this.setAdapter(new MemoryEventQueueAdapter({ appName: this.app.name, logger: this.app.logger }));
+    this.initializeAdapter();
     app.on("afterStart", async () => {
       await this.connect();
     });
@@ -283,6 +292,13 @@ const _EventQueue = class _EventQueue {
   get channelPrefix() {
     var _a;
     return (_a = this.options) == null ? void 0 : _a.channelPrefix;
+  }
+  initializeAdapter() {
+    if ((ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) && RedisEventQueueAdapter) {
+      this.setAdapter(new RedisEventQueueAdapter());
+    } else {
+      this.setAdapter(new MemoryEventQueueAdapter({ appName: this.app.name, logger: this.app.logger }));
+    }
   }
   getFullChannel(channel) {
     return [this.app.name, this.channelPrefix, channel].filter(Boolean).join(".");

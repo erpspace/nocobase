@@ -10,15 +10,13 @@
 import { Redis } from 'ioredis';
 import { randomUUID } from 'crypto';
 import { ILockAdapter, LockAcquireError, LockAbortError } from './lock-manager';
-import { ClusterModeManager } from '../../server/src/cluster-mode/cluster-mode-manager';
 
 export class RedisLockAdapter implements ILockAdapter {
     private redis: Redis;
     private connected = false;
 
-    constructor() {
-        this.redis = new Redis(ClusterModeManager.getRedisUrl(), {
-            retryDelayOnFailover: 100,
+    constructor(redisUrl: string = 'redis://localhost:6379') {
+        this.redis = new Redis(redisUrl, {
             maxRetriesPerRequest: 3,
             lazyConnect: true,
         });
@@ -28,11 +26,11 @@ export class RedisLockAdapter implements ILockAdapter {
 
     private setupEventHandlers(): void {
         this.redis.on('connect', () => {
-            ClusterModeManager.log('Redis Lock adapter connected');
+            console.log('Redis Lock adapter connected');
         });
 
         this.redis.on('error', (error) => {
-            ClusterModeManager.error('Redis Lock adapter error', error);
+            console.error('Redis Lock adapter error', error);
         });
     }
 
@@ -44,9 +42,9 @@ export class RedisLockAdapter implements ILockAdapter {
         try {
             await this.redis.connect();
             this.connected = true;
-            ClusterModeManager.log('Redis Lock adapter connected');
+            console.log('Redis Lock adapter connected');
         } catch (error) {
-            ClusterModeManager.error('Failed to connect Redis Lock adapter', error);
+            console.error('Failed to connect Redis Lock adapter', error);
             throw error;
         }
     }
@@ -59,9 +57,9 @@ export class RedisLockAdapter implements ILockAdapter {
         try {
             await this.redis.quit();
             this.connected = false;
-            ClusterModeManager.log('Redis Lock adapter closed');
+            console.log('Redis Lock adapter closed');
         } catch (error) {
-            ClusterModeManager.error('Error closing Redis Lock adapter', error);
+            console.error('Error closing Redis Lock adapter', error);
         }
     }
 
@@ -70,7 +68,7 @@ export class RedisLockAdapter implements ILockAdapter {
             throw new Error('Redis Lock adapter not connected');
         }
 
-        const lockKey = ClusterModeManager.createKey('lock', key);
+        const lockKey = `nocobase:lock:${key}`;
         const lockValue = randomUUID();
 
         try {
@@ -81,7 +79,7 @@ export class RedisLockAdapter implements ILockAdapter {
                 throw new LockAcquireError(`Failed to acquire lock for key: ${key}`);
             }
 
-            ClusterModeManager.log(`Acquired lock for key: ${key}`, { lockValue, ttl });
+            console.log(`Acquired lock for key: ${key}`, { lockValue, ttl });
 
             // Return release function
             return async () => {
@@ -91,7 +89,7 @@ export class RedisLockAdapter implements ILockAdapter {
             if (error instanceof LockAcquireError) {
                 throw error;
             }
-            ClusterModeManager.error(`Error acquiring lock for key: ${key}`, error);
+            console.error(`Error acquiring lock for key: ${key}`, error);
             throw new LockAcquireError(`Failed to acquire lock for key: ${key}`);
         }
     }
@@ -113,7 +111,7 @@ export class RedisLockAdapter implements ILockAdapter {
             throw new Error('Redis Lock adapter not connected');
         }
 
-        const lockKey = ClusterModeManager.createKey('lock', key);
+        const lockKey = `nocobase:lock:${key}`;
         
         try {
             // Check if lock exists
@@ -131,7 +129,7 @@ export class RedisLockAdapter implements ILockAdapter {
             if (error instanceof LockAcquireError) {
                 throw error;
             }
-            ClusterModeManager.error(`Error checking lock for key: ${key}`, error);
+            console.error(`Error checking lock for key: ${key}`, error);
             throw new LockAcquireError(`Failed to check lock for key: ${key}`);
         }
     }
@@ -150,12 +148,12 @@ export class RedisLockAdapter implements ILockAdapter {
             const result = await this.redis.eval(script, 1, lockKey, lockValue);
             
             if (result === 1) {
-                ClusterModeManager.log(`Released lock: ${lockKey}`);
+                console.log(`Released lock: ${lockKey}`);
             } else {
-                ClusterModeManager.warn(`Lock was not released (may have expired): ${lockKey}`);
+                console.warn(`Lock was not released (may have expired): ${lockKey}`);
             }
         } catch (error) {
-            ClusterModeManager.error(`Error releasing lock: ${lockKey}`, error);
+            console.error(`Error releasing lock: ${lockKey}`, error);
             throw error;
         }
     }
@@ -169,11 +167,11 @@ export class RedisLockAdapter implements ILockAdapter {
         }
 
         try {
-            const lockKey = ClusterModeManager.createKey('lock', key);
+            const lockKey = `nocobase:lock:${key}`;
             const exists = await this.redis.exists(lockKey);
             return exists === 1;
         } catch (error) {
-            ClusterModeManager.error(`Error checking if lock exists for key: ${key}`, error);
+            console.error(`Error checking if lock exists for key: ${key}`, error);
             return false;
         }
     }
@@ -187,11 +185,11 @@ export class RedisLockAdapter implements ILockAdapter {
         }
 
         try {
-            const lockKey = ClusterModeManager.createKey('lock', key);
+            const lockKey = `nocobase:lock:${key}`;
             const ttl = await this.redis.pttl(lockKey);
             return ttl;
         } catch (error) {
-            ClusterModeManager.error(`Error getting lock TTL for key: ${key}`, error);
+            console.error(`Error getting lock TTL for key: ${key}`, error);
             return -1;
         }
     }
@@ -205,7 +203,7 @@ export class RedisLockAdapter implements ILockAdapter {
         }
 
         try {
-            const lockKey = ClusterModeManager.createKey('lock', key);
+            const lockKey = `nocobase:lock:${key}`;
             const currentTtl = await this.redis.pttl(lockKey);
             
             if (currentTtl === -2) {
@@ -222,12 +220,12 @@ export class RedisLockAdapter implements ILockAdapter {
             const result = await this.redis.pexpire(lockKey, newTtl);
             
             if (result) {
-                ClusterModeManager.log(`Extended lock TTL for key: ${key}`, { newTtl });
+                console.log(`Extended lock TTL for key: ${key}`, { newTtl });
             }
             
             return result === 1;
         } catch (error) {
-            ClusterModeManager.error(`Error extending lock TTL for key: ${key}`, error);
+            console.error(`Error extending lock TTL for key: ${key}`, error);
             return false;
         }
     }

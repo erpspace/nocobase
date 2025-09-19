@@ -21,13 +21,11 @@ export class RedisPubSubAdapter implements IPubSubAdapter {
 
     constructor() {
         this.redis = new Redis(ClusterModeManager.getRedisUrl(), {
-            retryDelayOnFailover: 100,
             maxRetriesPerRequest: 3,
             lazyConnect: true,
         });
 
         this.subscriber = new Redis(ClusterModeManager.getRedisUrl(), {
-            retryDelayOnFailover: 100,
             maxRetriesPerRequest: 3,
             lazyConnect: true,
         });

@@ -95,6 +95,8 @@ export class PluginClientServer extends Plugin {
             lang,
             name: ctx.app.name,
             theme: currentUser?.systemSettings?.theme || systemSetting?.options?.theme || 'default',
+            instanceId: ctx.app.instanceId,
+            processId: process.pid,
           };
 
           if (process.env['EXPORT_LIMIT']) {

@@ -16,6 +16,7 @@ export declare class PubSubManager {
     protected adapter: IPubSubAdapter;
     protected handlerManager: HandlerManager;
     constructor(options?: PubSubManagerOptions);
+    private initializeAdapter;
     get channelPrefix(): string;
     setAdapter(adapter: IPubSubAdapter): void;
     isConnected(): Promise<boolean>;

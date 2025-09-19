@@ -33,6 +33,15 @@ __export(pub_sub_manager_exports, {
 module.exports = __toCommonJS(pub_sub_manager_exports);
 var import_utils = require("@nocobase/utils");
 var import_handler_manager = require("./handler-manager");
+let ClusterModeManager = null;
+let RedisPubSubAdapter = null;
+try {
+  const clusterMode = require("../cluster-mode/cluster-mode-manager");
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisPubSub = require("../cluster-mode/redis-pub-sub-adapter");
+  RedisPubSubAdapter = redisPubSub.RedisPubSubAdapter;
+} catch (error) {
+}
 const createPubSubManager = /* @__PURE__ */ __name((app, options) => {
   const pubSubManager = new PubSubManager(options);
   app.on("afterStart", async () => {
@@ -48,10 +57,16 @@ const _PubSubManager = class _PubSubManager {
     this.options = options;
     this.publisherId = (0, import_utils.uid)();
     this.handlerManager = new import_handler_manager.HandlerManager(this.publisherId);
+    this.initializeAdapter();
   }
   publisherId;
   adapter;
   handlerManager;
+  initializeAdapter() {
+    if ((ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) && RedisPubSubAdapter) {
+      this.setAdapter(new RedisPubSubAdapter());
+    }
+  }
   get channelPrefix() {
     var _a;
     return ((_a = this.options) == null ? void 0 : _a.channelPrefix) ? `${this.options.channelPrefix}.` : "";

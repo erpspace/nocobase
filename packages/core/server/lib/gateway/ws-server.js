@@ -47,6 +47,15 @@ var import_app_supervisor = require("../app-supervisor");
 var import_errors = require("./errors");
 var import_lodash = __toESM(require("lodash"));
 var import_events = __toESM(require("events"));
+let ClusterModeManager = null;
+let RedisWebSocketManager = null;
+try {
+  const clusterMode = require("../cluster-mode/cluster-mode-manager");
+  ClusterModeManager = clusterMode.ClusterModeManager;
+  const redisWS = require("../cluster-mode/redis-websocket-manager");
+  RedisWebSocketManager = redisWS.RedisWebSocketManager;
+} catch (error) {
+}
 function getPayloadByErrorCode(code, options) {
   const error = (0, import_errors.getErrorWithCode)(code);
   return import_lodash.default.omit((0, import_errors.applyErrorWithArgs)(error, options), ["status", "maintaining"]);
@@ -56,9 +65,11 @@ const _WSServer = class _WSServer extends import_events.default {
   wss;
   webSocketClients = /* @__PURE__ */ new Map();
   logger;
+  redisWSManager = null;
   constructor() {
     super();
     this.wss = new import_ws.WebSocketServer({ noServer: true });
+    this.initializeRedisWSManager();
     this.wss.on("connection", (ws, request) => {
       const client = this.addNewConnection(ws, request);
       console.log(`new client connected ${ws.id}`);
@@ -153,6 +164,57 @@ const _WSServer = class _WSServer extends import_events.default {
       });
     });
   }
+  initializeRedisWSManager() {
+    if ((ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) && RedisWebSocketManager) {
+      this.redisWSManager = new RedisWebSocketManager(process.env.INSTANCE_ID || (0, import_nanoid.nanoid)());
+      this.redisWSManager.on("clientConnected", (data) => {
+        console.log(`Client connected on another instance: ${data.clientId}`);
+      });
+      this.redisWSManager.on("clientDisconnected", (data) => {
+        console.log(`Client disconnected on another instance: ${data.clientId}`);
+      });
+      this.redisWSManager.on("websocketMessage", (data) => {
+        this.handleCrossInstanceMessage(data);
+      });
+      this.redisWSManager.on("broadcastMessage", (data) => {
+        this.handleCrossInstanceBroadcast(data);
+      });
+    }
+  }
+  async start() {
+    if (this.redisWSManager) {
+      await this.redisWSManager.connect();
+    }
+  }
+  async stop() {
+    if (this.redisWSManager) {
+      await this.redisWSManager.close();
+    }
+  }
+  handleCrossInstanceMessage(data) {
+    const { app, message, targetClientId, targetTags } = data;
+    if (targetClientId) {
+      const client = this.webSocketClients.get(targetClientId);
+      if (client) {
+        client.ws.send(JSON.stringify(message));
+      }
+    } else if (targetTags) {
+      for (const [clientId, client] of this.webSocketClients) {
+        const hasMatchingTag = targetTags.some((tag) => client.tags.has(tag));
+        if (hasMatchingTag) {
+          client.ws.send(JSON.stringify(message));
+        }
+      }
+    }
+  }
+  handleCrossInstanceBroadcast(data) {
+    const { app, message, targetTags } = data;
+    for (const [clientId, client] of this.webSocketClients) {
+      if (!targetTags || targetTags.some((tag) => client.tags.has(tag))) {
+        client.ws.send(JSON.stringify(message));
+      }
+    }
+  }
   bindAppWSEvents(app) {
     if (app.listenerCount("ws:setTag") > 0) {
       return;
@@ -188,15 +250,28 @@ const _WSServer = class _WSServer extends import_events.default {
   addNewConnection(ws, request) {
     const id = (0, import_nanoid.nanoid)();
     ws.id = id;
-    this.webSocketClients.set(id, {
+    const client = {
       ws,
       tags: /* @__PURE__ */ new Set(),
       url: request.url,
       headers: request.headers,
       id
-    });
-    this.setClientApp(this.webSocketClients.get(id));
-    return this.webSocketClients.get(id);
+    };
+    this.webSocketClients.set(id, client);
+    this.setClientApp(client);
+    if (this.redisWSManager) {
+      this.redisWSManager.addConnection({
+        id: client.id,
+        tags: client.tags,
+        url: client.url,
+        headers: client.headers,
+        app: client.app || "main",
+        timestamp: Date.now()
+      }).catch((error) => {
+        console.error("Failed to sync client connection to Redis:", error);
+      });
+    }
+    return client;
   }
   setClientTag(clientId, tagKey, tagValue) {
     const client = this.webSocketClients.get(clientId);
@@ -230,13 +305,44 @@ const _WSServer = class _WSServer extends import_events.default {
   }
   removeConnection(id) {
     console.log(`client disconnected ${id}`);
+    const client = this.webSocketClients.get(id);
     this.webSocketClients.delete(id);
+    if (this.redisWSManager && client) {
+      this.redisWSManager.removeConnection(id, client.app || "main").catch((error) => {
+        console.error("Failed to sync client disconnection to Redis:", error);
+      });
+    }
   }
   sendMessageToConnection(client, sendMessage) {
     client.ws.send(JSON.stringify(sendMessage));
   }
   sendToConnectionsByTag(tagName, tagValue, sendMessage) {
     this.sendToConnectionsByTags([{ tagName, tagValue }], sendMessage);
+  }
+  // Enhanced methods for cluster mode
+  async sendToClient(clientId, message) {
+    const client = this.webSocketClients.get(clientId);
+    if (client) {
+      client.ws.send(JSON.stringify(message));
+    } else if (this.redisWSManager) {
+      await this.redisWSManager.sendToClient("main", clientId, message);
+    }
+  }
+  async sendToClientsByTag(tagKey, tagValue, message) {
+    this.sendToConnectionsByTag(tagKey, tagValue, message);
+    if (this.redisWSManager) {
+      await this.redisWSManager.sendToClientsByTag("main", tagKey, tagValue, message);
+    }
+  }
+  async broadcastToApp(app, message) {
+    for (const [clientId, client] of this.webSocketClients) {
+      if (client.app === app) {
+        client.ws.send(JSON.stringify(message));
+      }
+    }
+    if (this.redisWSManager) {
+      await this.redisWSManager.broadcastToApp(app, message);
+    }
   }
   /**
    * Send message to clients that match all the given tag conditions
@@ -250,12 +356,6 @@ const _WSServer = class _WSServer extends import_events.default {
         this.sendMessageToConnection(client, sendMessage);
       }
     });
-  }
-  sendToClient(clientId, sendMessage) {
-    const client = this.webSocketClients.get(clientId);
-    if (client) {
-      this.sendMessageToConnection(client, sendMessage);
-    }
   }
   sendToAppUser(appName, userId, message) {
     this.sendToConnectionsByTags(

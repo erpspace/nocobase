@@ -21,7 +21,6 @@ export class RedisEventQueueAdapter implements IEventQueueAdapter {
 
     constructor() {
         this.redis = new Redis(ClusterModeManager.getRedisUrl(), {
-            retryDelayOnFailover: 100,
             maxRetriesPerRequest: 3,
             lazyConnect: true,
         });

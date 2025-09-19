@@ -32,7 +32,6 @@ __export(plugin_exports, {
 module.exports = __toCommonJS(plugin_exports);
 var import_server = require("@nocobase/server");
 var import_utils = require("./utils");
-var import_license_kit = require("@nocobase/license-kit");
 class PluginLicenseServer extends import_server.Plugin {
   async afterAdd() {
   }
@@ -48,11 +47,6 @@ class PluginLicenseServer extends import_server.Plugin {
         },
         "license-key": async (ctx, next) => {
           const { licenseKey } = ctx.request.body;
-          try {
-            (0, import_license_kit.keyDecrypt)(licenseKey);
-          } catch (e) {
-            return ctx.throw(500, ctx.t("Invalid license key", { ns: "@nocobase/plugin-license" }));
-          }
           await (0, import_utils.saveLicenseKey)(licenseKey);
           await next();
         },

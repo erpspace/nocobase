@@ -84,6 +84,7 @@ export declare class EventQueue {
     protected events: Map<string, QueueEventOptions>;
     get channelPrefix(): string;
     constructor(app: Application, options?: EventQueueOptions);
+    private initializeAdapter;
     getFullChannel(channel: string): string;
     setAdapter<A extends IEventQueueAdapter>(adapter: A): void;
     isConnected(): boolean;
