@@ -83,6 +83,10 @@ class CollectionModel extends import_database.MagicAttributeModel {
       if (resetFields) {
         collection.resetFields();
       }
+      const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+      if (isClusterMode) {
+        collection.resetFields();
+      }
       collection.updateOptions(collectionOptions);
     } else {
       if (!collectionOptions.dumpRules) {
@@ -104,7 +108,8 @@ class CollectionModel extends import_database.MagicAttributeModel {
   }
   async loadFields(options = {}) {
     let fields = this.get("fields") || [];
-    if (!fields.length) {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (!fields.length || isClusterMode) {
       fields = await this.getFields(options);
     }
     if (options.skipField) {

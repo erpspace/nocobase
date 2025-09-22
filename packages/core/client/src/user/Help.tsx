@@ -35,11 +35,11 @@ const SettingsMenu: React.FC<{
 
   const items: SettingsMenuItemType[] = [
     {
-      key: 'nocobase',
+      key: 'erpspace',
       disabled: true,
       label: (
         <div style={{ cursor: 'text' }}>
-          <div style={{ color: token.colorText }}>NocoBase</div>
+          <div style={{ color: token.colorText }}>ERPSPACE</div>
           <div style={{ fontSize: '0.8em', color: token.colorTextDescription }}>v{data?.data?.version}</div>
           {data?.data?.instanceId && (
             <div style={{ fontSize: '0.7em', color: token.colorTextDescription, marginTop: '2px' }}>
@@ -47,46 +47,6 @@ const SettingsMenu: React.FC<{
             </div>
           )}
         </div>
-      ),
-    },
-    {
-      key: 'divider_1',
-      type: 'divider',
-    },
-    {
-      key: 'homePage',
-      label: (
-        <a
-          href={isSimplifiedChinese ? 'https://www.nocobase.com/cn/' : 'https://www.nocobase.com'}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t('Home page')}
-        </a>
-      ),
-    },
-    {
-      key: 'userManual',
-      label: (
-        <a
-          href={isSimplifiedChinese ? 'https://docs-cn.nocobase.com/handbook' : 'https://docs.nocobase.com/handbook'}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t('Handbook')}
-        </a>
-      ),
-    },
-    {
-      key: 'license',
-      label: (
-        <a
-          href={isSimplifiedChinese ? 'https://www.nocobase.com/cn/agreement' : 'https://www.nocobase.com/en/agreement'}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t('License')}
-        </a>
       ),
     },
   ];

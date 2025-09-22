@@ -319,6 +319,14 @@ const _Collection = class _Collection extends import_events.EventEmitter {
       collectionName: this.name,
       fieldName: name
     });
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      database.logger.trace(`Cluster mode detected - reloading field ${name} from database`, {
+        databaseInstanceId: database.instanceId,
+        collectionName: this.name,
+        fieldName: name
+      });
+    }
     if (options.source) {
       const [sourceCollectionName, sourceFieldName] = options.source.split(".");
       const sourceCollection = this.db.collections.get(sourceCollectionName);
@@ -384,14 +392,30 @@ const _Collection = class _Collection extends import_events.EventEmitter {
     if (resetFields) {
       this.resetFields();
     }
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      this.db.logger.trace(`Cluster mode: setting fields for collection ${this.name}`, {
+        databaseInstanceId: this.db.instanceId,
+        collectionName: this.name,
+        fieldCount: fields.length
+      });
+    }
     for (const { name, ...options } of fields) {
       this.addField(name, options);
     }
   }
   resetFields() {
-    const fieldNames = this.fields.keys();
+    const fieldNames = Array.from(this.fields.keys());
     for (const fieldName of fieldNames) {
       this.removeField(fieldName);
+    }
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      this.db.logger.trace(`Cluster mode: reset fields for collection ${this.name}`, {
+        databaseInstanceId: this.db.instanceId,
+        collectionName: this.name,
+        resetFieldCount: fieldNames.length
+      });
     }
   }
   remove() {

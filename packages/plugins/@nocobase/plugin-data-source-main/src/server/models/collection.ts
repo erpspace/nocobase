@@ -78,6 +78,12 @@ export class CollectionModel extends MagicAttributeModel {
         collection.resetFields();
       }
 
+      // In cluster mode, always reset fields to ensure fresh data from database
+      const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+      if (isClusterMode) {
+        collection.resetFields();
+      }
+
       collection.updateOptions(collectionOptions);
     } else {
       if (!collectionOptions.dumpRules) {
@@ -111,7 +117,11 @@ export class CollectionModel extends MagicAttributeModel {
   ) {
     let fields = this.get('fields') || [];
 
-    if (!fields.length) {
+    // In cluster mode, always reload fields from database to ensure synchronization
+    // Check if we're in cluster mode by looking for CLUSTER_MODE environment variable
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (!fields.length || isClusterMode) {
       fields = await this.getFields(options);
     }
 

@@ -49,6 +49,10 @@ class CollectionRepository extends import_database.Repository {
   }
   async load(options = {}) {
     this.database.logger.debug("loading collections...");
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      this.database.logger.debug("Cluster mode detected - forcing fresh collection load from database");
+    }
     const { filter, skipExist } = options;
     const instances = await this.find({ filter, appends: ["fields"] });
     const graphlib = import_utils.CollectionsGraph.graphlib();

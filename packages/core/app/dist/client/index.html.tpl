@@ -18,6 +18,6 @@
 </head>
 <body>
 <div id="root"></div>
-<script src="/umi.856ee8fc.js"></script>
+<script src="/umi.2228dcfc.js"></script>
 
 </body></html>

@@ -27,6 +27,12 @@ export class CollectionRepository extends Repository {
 
   async load(options: LoadOptions = {}) {
     this.database.logger.debug('loading collections...');
+    
+    // In cluster mode, always reload collections from database to ensure synchronization
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    if (isClusterMode) {
+      this.database.logger.debug('Cluster mode detected - forcing fresh collection load from database');
+    }
 
     const { filter, skipExist } = options;
     const instances = (await this.find({ filter, appends: ['fields'] })) as CollectionModel[];
