@@ -63,7 +63,7 @@ const _PubSubManager = class _PubSubManager {
   adapter;
   handlerManager;
   initializeAdapter() {
-    if ((ClusterModeManager == null ? void 0 : ClusterModeManager.isEnabled()) && RedisPubSubAdapter) {
+    if (process.env.ERPSPACE_MULTICORE_ENABLED === "true" && RedisPubSubAdapter) {
       this.setAdapter(new RedisPubSubAdapter());
     }
   }
