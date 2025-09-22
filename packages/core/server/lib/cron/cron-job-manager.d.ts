@@ -12,6 +12,10 @@ export declare class CronJobManager {
     private app;
     private _jobs;
     private _started;
+    /**
+     * In cluster mode, log cron operations for debugging
+     */
+    private isClusterMode;
     constructor(app: Application);
     get started(): boolean;
     get jobs(): Set<CronJob>;

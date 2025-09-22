@@ -23,5 +23,10 @@ export declare class PluginDataSourceMainServer extends Plugin {
      * Invalidate collection cache when fields are modified
      */
     invalidateCollectionCache(collectionName: string): Promise<void>;
+    /**
+     * CRITICAL: Force complete reload of collection from database
+     * This bypasses ALL caches and forces fresh data from DB
+     */
+    forceReloadCollection(collectionName: string): Promise<void>;
 }
 export default PluginDataSourceMainServer;

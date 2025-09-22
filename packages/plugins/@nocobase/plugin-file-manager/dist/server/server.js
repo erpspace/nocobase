@@ -113,6 +113,9 @@ class PluginFileManagerServer extends import_server.Plugin {
     const { storageName, filePath, documentRoot } = options;
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode || !this.storagesCache.size) {
+      if (isClusterMode) {
+        console.log("[CLUSTER] Reloading file storages before upload");
+      }
       await this.loadStorages();
     }
     const storages = Array.from(this.storagesCache.values());
@@ -149,6 +152,9 @@ class PluginFileManagerServer extends import_server.Plugin {
   async loadStorages(options) {
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode || !this.storagesCache.size) {
+      if (isClusterMode) {
+        console.log("[CLUSTER] Loading file storages from database (bypassing cache)");
+      }
       const repository = this.db.getRepository("storages");
       const storages = await repository.find({
         transaction: options == null ? void 0 : options.transaction

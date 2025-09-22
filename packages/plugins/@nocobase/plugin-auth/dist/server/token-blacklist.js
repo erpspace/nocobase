@@ -65,21 +65,33 @@ class TokenBlacklistService {
     return this.plugin.app;
   }
   async has(token) {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (this.bloomFilter) {
       const exists = await this.bloomFilter.exists(this.cacheKey, token);
       if (!exists) {
+        if (isClusterMode) {
+          console.log(`[CLUSTER] Token not in blacklist (bloom filter): ${token.substring(0, 8)}...`);
+        }
         return false;
       }
     }
-    return !!await this.repo.findOne({
+    const result = !!await this.repo.findOne({
       filter: {
         token
       }
     });
+    if (isClusterMode) {
+      console.log(`[CLUSTER] Token blacklist check result: ${result ? "BLOCKED" : "ALLOWED"} for ${token.substring(0, 8)}...`);
+    }
+    return result;
   }
   async add(values) {
     await this.deleteExpiredTokens();
     const { token } = values;
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      console.log(`[CLUSTER] Adding token to blacklist: ${token.substring(0, 8)}...`);
+    }
     if (this.bloomFilter) {
       await this.bloomFilter.add(this.cacheKey, token);
     }

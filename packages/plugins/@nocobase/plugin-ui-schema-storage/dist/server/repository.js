@@ -176,6 +176,9 @@ const _UiSchemaRepository = class _UiSchemaRepository extends import_database.Re
   }
   async getProperties(uid2, options = {}) {
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      console.log(`[CLUSTER] Loading UI properties ${uid2} from database (bypassing cache)`);
+    }
     if ((options == null ? void 0 : options.readFromCache) && this.cache && !isClusterMode) {
       return this.cache.wrap(`p_${uid2}`, () => {
         return this.doGetProperties(uid2, options);
@@ -199,6 +202,9 @@ const _UiSchemaRepository = class _UiSchemaRepository extends import_database.Re
   }
   async getJsonSchema(uid2, options) {
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      console.log(`[CLUSTER] Loading UI schema ${uid2} from database (bypassing cache)`);
+    }
     if ((options == null ? void 0 : options.readFromCache) && this.cache && !isClusterMode) {
       return this.cache.wrap(`s_${uid2}`, () => {
         return this.doGetJsonSchema(uid2, options);

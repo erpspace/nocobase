@@ -49,7 +49,7 @@ export class CronJobManager {
     this._jobs.add(cronJob);
 
     if (this.isClusterMode()) {
-      console.log(`[CLUSTER] Added cron job: ${options.name || 'unnamed'}`);
+      console.log(`[CLUSTER] Added cron job: ${(options as any).name || 'unnamed'}`);
     }
 
     return cronJob;

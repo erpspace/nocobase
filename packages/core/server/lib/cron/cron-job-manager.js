@@ -46,6 +46,12 @@ const _CronJobManager = class _CronJobManager {
   }
   _jobs = /* @__PURE__ */ new Set();
   _started = false;
+  /**
+   * In cluster mode, log cron operations for debugging
+   */
+  isClusterMode() {
+    return process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+  }
   get started() {
     return this._started;
   }
@@ -55,6 +61,9 @@ const _CronJobManager = class _CronJobManager {
   addJob(options) {
     const cronJob = new import_cron.CronJob(options);
     this._jobs.add(cronJob);
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] Added cron job: ${options.name || "unnamed"}`);
+    }
     return cronJob;
   }
   removeJob(job) {

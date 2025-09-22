@@ -55,7 +55,10 @@ async function setCurrentRole(ctx, next) {
   const attachRoles = ctx.state.attachRoles || [];
   const cache = ctx.cache;
   const repository = ctx.db.getRepository("users.roles", ctx.state.currentUser.id);
-  const roles = await cache.wrap(
+  const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+  const roles = isClusterMode ? await repository.find({
+    raw: true
+  }) : await cache.wrap(
     `roles:${ctx.state.currentUser.id}`,
     () => repository.find({
       raw: true
@@ -73,7 +76,7 @@ async function setCurrentRole(ctx, next) {
   roles.forEach((role2) => rolesMap.set(role2.name, role2));
   const userRoles = Array.from(rolesMap.values());
   ctx.state.currentUser.roles = userRoles;
-  const systemSettings = await cache.wrap(
+  const systemSettings = isClusterMode ? await ctx.db.getRepository("systemSettings").findOne({ raw: true }) : await cache.wrap(
     `app:systemSettings`,
     () => ctx.db.getRepository("systemSettings").findOne({ raw: true })
   );
@@ -104,7 +107,7 @@ async function setCurrentRole(ctx, next) {
     }
   }
   if (!role) {
-    const defaultRoleModel = await cache.wrapWithCondition(
+    const defaultRoleModel = isClusterMode ? await ctx.db.getRepository("rolesUsers").findOne({ where: { userId: ctx.state.currentUser.id, default: true } }) : await cache.wrapWithCondition(
       `roles:${ctx.state.currentUser.id}:defaultRole`,
       () => ctx.db.getRepository("rolesUsers").findOne({ where: { userId: ctx.state.currentUser.id, default: true } }),
       {

@@ -109,6 +109,12 @@ const _PluginManager = class _PluginManager {
    */
   pluginAliases = /* @__PURE__ */ new Map();
   /**
+   * In cluster mode, log plugin operations for debugging
+   */
+  isClusterMode() {
+    return process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+  }
+  /**
    * @internal
    */
   server;

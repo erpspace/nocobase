@@ -43,6 +43,12 @@ const _BackgroundJobManager = class _BackgroundJobManager {
   subscriptions = /* @__PURE__ */ new Map();
   // topic -> handler
   processing = null;
+  /**
+   * In cluster mode, log background job operations for debugging
+   */
+  isClusterMode() {
+    return process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+  }
   get channel() {
     return this.options.channel ?? _BackgroundJobManager.DEFAULT_CHANNEL;
   }
@@ -86,6 +92,9 @@ const _BackgroundJobManager = class _BackgroundJobManager {
     }
     this.subscriptions.set(topic, options);
     this.app.logger.debug(`Subscribed to background job topic: ${topic}`);
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] Subscribed to background job topic: ${topic}`);
+    }
   }
   /**
    * 取消订阅指定主题

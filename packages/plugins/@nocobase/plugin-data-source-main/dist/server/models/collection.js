@@ -85,6 +85,7 @@ class CollectionModel extends import_database.MagicAttributeModel {
       }
       const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
       if (isClusterMode) {
+        console.log(`[CLUSTER] Resetting fields for collection ${name} to ensure fresh data`);
         collection.resetFields();
       }
       collection.updateOptions(collectionOptions);
@@ -110,6 +111,7 @@ class CollectionModel extends import_database.MagicAttributeModel {
     let fields = this.get("fields") || [];
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (!fields.length || isClusterMode) {
+      console.log(`[CLUSTER] Loading fields for collection ${this.get("name")} from database`);
       fields = await this.getFields(options);
     }
     if (options.skipField) {

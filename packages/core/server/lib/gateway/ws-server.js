@@ -66,13 +66,23 @@ const _WSServer = class _WSServer extends import_events.default {
   webSocketClients = /* @__PURE__ */ new Map();
   logger;
   redisWSManager = null;
+  /**
+   * In cluster mode, log WebSocket operations for debugging
+   */
+  isClusterMode() {
+    return process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+  }
   constructor() {
     super();
     this.wss = new import_ws.WebSocketServer({ noServer: true });
     this.initializeRedisWSManager();
     this.wss.on("connection", (ws, request) => {
       const client = this.addNewConnection(ws, request);
-      console.log(`new client connected ${ws.id}`);
+      if (this.isClusterMode()) {
+        console.log(`[CLUSTER] New WebSocket client connected: ${ws.id}`);
+      } else {
+        console.log(`new client connected ${ws.id}`);
+      }
       ws.on("error", () => {
         this.removeConnection(ws.id);
       });
@@ -258,6 +268,9 @@ const _WSServer = class _WSServer extends import_events.default {
       id
     };
     this.webSocketClients.set(id, client);
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] Added new WebSocket connection: ${id}`);
+    }
     this.setClientApp(client);
     if (this.redisWSManager) {
       this.redisWSManager.addConnection({
@@ -304,9 +317,13 @@ const _WSServer = class _WSServer extends import_events.default {
     }
   }
   removeConnection(id) {
-    console.log(`client disconnected ${id}`);
     const client = this.webSocketClients.get(id);
     this.webSocketClients.delete(id);
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] WebSocket client disconnected: ${id}`);
+    } else {
+      console.log(`client disconnected ${id}`);
+    }
     if (this.redisWSManager && client) {
       this.redisWSManager.removeConnection(id, client.app || "main").catch((error) => {
         console.error("Failed to sync client disconnection to Redis:", error);

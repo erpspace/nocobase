@@ -700,7 +700,7 @@ class PluginDataSourceManagerServer extends import_server.Plugin {
     } catch (error) {
       console.warn(`[CLUSTER] Redis cache unavailable for data source ${dataSourceKey}, falling back to database:`, error.message);
     }
-    console.log(`[CLUSTER] Loading data source ${dataSourceKey} from database`);
+    console.log(`[CLUSTER] Loading data source ${dataSourceKey} from database (bypassing cache)`);
     const dataSourceModel = await this.app.db.getRepository("dataSources").findOne({
       filter: {
         key: dataSourceKey

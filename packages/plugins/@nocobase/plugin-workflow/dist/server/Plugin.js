@@ -224,7 +224,7 @@ class PluginWorkflowServer extends import_server.Plugin {
         const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
         let workflow = null;
         if (isClusterMode) {
-          console.log(`[CLUSTER] Loading workflow ${workflowId} from database (cluster mode)`);
+          console.log(`[CLUSTER] Loading workflow ${workflowId} from database (cluster mode - bypassing cache)`);
           workflow = await this.db.getRepository("workflows").findOne({
             filterByTk: workflowId,
             appends: ["nodes", "revisions"]
@@ -269,6 +269,7 @@ class PluginWorkflowServer extends import_server.Plugin {
   getLogger(workflowId = "dispatcher") {
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode) {
+      console.log(`[CLUSTER] Creating fresh logger for workflow ${workflowId} (bypassing cache)`);
       return this.createLogger({
         dirname: import_path.default.join("workflows", String(workflowId)),
         filename: "%DATE%.log"

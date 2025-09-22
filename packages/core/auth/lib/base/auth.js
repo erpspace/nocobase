@@ -108,7 +108,13 @@ const _BaseAuth = class _BaseAuth extends import_auth.Auth {
       }
     }
     const { userId, roleName, iat, temp, jti, exp, signInTime } = payload ?? {};
-    const user = userId ? await cache.wrap(
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    const user = userId ? isClusterMode ? await this.userRepository.findOne({
+      filter: {
+        id: userId
+      },
+      raw: true
+    }) : await cache.wrap(
       this.getCacheKey(userId),
       () => this.userRepository.findOne({
         filter: {

@@ -44,6 +44,18 @@ var collections_default = {
   async ["collections:listMeta"](ctx, next) {
     const db = ctx.app.db;
     const results = [];
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      console.log("[CLUSTER] Reloading collections from database for listMeta");
+      const collectionModels = await db.getRepository("collections").find({
+        filter: {
+          loadedFromCollectionManager: true
+        }
+      });
+      for (const model of collectionModels) {
+        await model.load();
+      }
+    }
     db.collections.forEach((collection) => {
       if (!collection.options.loadedFromCollectionManager) {
         return;
@@ -141,6 +153,12 @@ var collections_default = {
         if (plugin && plugin.invalidateCollectionCache) {
           await plugin.invalidateCollectionCache(filterByTk);
         }
+        await ctx.app.syncMessageManager.publish("data-source-main", {
+          type: "forceReloadCollection",
+          collectionName: filterByTk
+        }, {
+          transaction
+        });
       }
       await transaction.commit();
     } catch (e) {

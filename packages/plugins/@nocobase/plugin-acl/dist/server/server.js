@@ -105,7 +105,7 @@ class PluginACLServer extends import_server.Plugin {
     } catch (error) {
       console.warn(`[CLUSTER] Redis cache unavailable for ACL role ${roleName}, falling back to database:`, error.message);
     }
-    console.log(`[CLUSTER] Loading ACL role ${roleName} from database`);
+    console.log(`[CLUSTER] Loading ACL role ${roleName} from database (bypassing cache)`);
     const role = await this.app.db.getRepository("roles").findOne({
       filter: {
         name: roleName

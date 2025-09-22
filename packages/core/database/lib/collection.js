@@ -321,6 +321,7 @@ const _Collection = class _Collection extends import_events.EventEmitter {
     });
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode) {
+      console.log(`[CLUSTER] Setting field ${name} for collection ${this.name} - forcing reload from database`);
       database.logger.trace(`Cluster mode detected - reloading field ${name} from database`, {
         databaseInstanceId: database.instanceId,
         collectionName: this.name,
@@ -394,6 +395,7 @@ const _Collection = class _Collection extends import_events.EventEmitter {
     }
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode) {
+      console.log(`[CLUSTER] Setting ${fields.length} fields for collection ${this.name}`);
       this.db.logger.trace(`Cluster mode: setting fields for collection ${this.name}`, {
         databaseInstanceId: this.db.instanceId,
         collectionName: this.name,
@@ -411,6 +413,7 @@ const _Collection = class _Collection extends import_events.EventEmitter {
     }
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode) {
+      console.log(`[CLUSTER] Reset ${fieldNames.length} fields for collection ${this.name}`);
       this.db.logger.trace(`Cluster mode: reset fields for collection ${this.name}`, {
         databaseInstanceId: this.db.instanceId,
         collectionName: this.name,

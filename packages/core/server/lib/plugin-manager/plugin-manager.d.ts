@@ -47,6 +47,10 @@ export declare class PluginManager {
      */
     pluginAliases: Map<string, Plugin<any>>;
     /**
+     * In cluster mode, log plugin operations for debugging
+     */
+    private isClusterMode;
+    /**
      * @internal
      */
     server: net.Server;

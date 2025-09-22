@@ -51,6 +51,7 @@ class CollectionRepository extends import_database.Repository {
     this.database.logger.debug("loading collections...");
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode) {
+      console.log("[CLUSTER] Loading collections from database - cluster mode detected");
       this.database.logger.debug("Cluster mode detected - forcing fresh collection load from database");
     }
     const { filter, skipExist } = options;

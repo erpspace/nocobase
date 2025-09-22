@@ -60,6 +60,9 @@ class FieldModel extends import_database.MagicAttributeModel {
     if (skipExist && collection.hasField(name) && !isClusterMode) {
       return collection.getField(name);
     }
+    if (isClusterMode) {
+      console.log(`[CLUSTER] Loading field ${name} for collection ${collectionName} from database`);
+    }
     const options = this.toJSON();
     const field = await (async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));

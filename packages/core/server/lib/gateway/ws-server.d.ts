@@ -28,6 +28,10 @@ export declare class WSServer extends EventEmitter {
     webSocketClients: Map<string, WebSocketClient>;
     logger: Logger;
     private redisWSManager;
+    /**
+     * In cluster mode, log WebSocket operations for debugging
+     */
+    private isClusterMode;
     constructor();
     private initializeRedisWSManager;
     start(): Promise<void>;

@@ -18,6 +18,10 @@ declare class BackgroundJobManager {
     static DEFAULT_CHANNEL: string;
     private subscriptions;
     private processing;
+    /**
+     * In cluster mode, log background job operations for debugging
+     */
+    private isClusterMode;
     private get channel();
     private onAfterStart;
     private onBeforeStop;
