@@ -46,6 +46,12 @@ export class PluginDataSourceMainServer extends Plugin {
       await this.syncCollectionWithFallback(collectionName);
     }
 
+    if (type === 'forceReloadCollection') {
+      // CRITICAL: Force complete reload of collection from database
+      console.log(`[CLUSTER] Force reloading collection: ${collectionName}`);
+      await this.forceReloadCollection(collectionName);
+    }
+
     if (type === 'removeField') {
       const { collectionName, fieldName } = message;
       const collection = this.app.db.getCollection(collectionName);
@@ -164,6 +170,17 @@ export class PluginDataSourceMainServer extends Plugin {
           this.sendSyncMessage(
             {
               type: 'syncCollection',
+              collectionName: model.get('name'),
+            },
+            {
+              transaction,
+            },
+          );
+
+          // CRITICAL: Force reload collection on ALL instances immediately after creation
+          this.sendSyncMessage(
+            {
+              type: 'forceReloadCollection',
               collectionName: model.get('name'),
             },
             {
@@ -623,6 +640,48 @@ export class PluginDataSourceMainServer extends Plugin {
       } catch (error) {
         console.warn(`[CLUSTER] Failed to invalidate cache for collection ${collectionName}:`, error);
       }
+    }
+  }
+
+  /**
+   * CRITICAL: Force complete reload of collection from database
+   * This bypasses ALL caches and forces fresh data from DB
+   */
+  async forceReloadCollection(collectionName: string) {
+    try {
+      console.log(`[CLUSTER] Force reloading collection ${collectionName} from database`);
+      
+      // 1. Remove collection from memory completely
+      const collection = this.app.db.getCollection(collectionName);
+      if (collection) {
+        // Reset all fields to force reload
+        collection.resetFields();
+        console.log(`[CLUSTER] Reset fields for collection: ${collectionName}`);
+      }
+
+      // 2. Invalidate all caches
+      await this.invalidateCollectionCache(collectionName);
+
+      // 3. Force reload from database
+      const collectionModel = await this.app.db.getCollection('collections').repository.findOne({
+        filter: {
+          name: collectionName,
+        },
+      });
+
+      if (collectionModel) {
+        // Force reload fields from database
+        await collectionModel.loadFields();
+        
+        // Reload collection with fresh data
+        await collectionModel.load();
+        
+        console.log(`[CLUSTER] Successfully force reloaded collection: ${collectionName}`);
+      } else {
+        console.warn(`[CLUSTER] Collection ${collectionName} not found in database during force reload`);
+      }
+    } catch (error) {
+      console.error(`[CLUSTER] Error force reloading collection ${collectionName}:`, error);
     }
   }
 }

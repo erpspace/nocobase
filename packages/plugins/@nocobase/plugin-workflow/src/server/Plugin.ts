@@ -253,7 +253,7 @@ export default class PluginWorkflowServer extends Plugin {
         
         let workflow = null;
         if (isClusterMode) {
-          console.log(`[CLUSTER] Loading workflow ${workflowId} from database (cluster mode)`);
+          console.log(`[CLUSTER] Loading workflow ${workflowId} from database (cluster mode - bypassing cache)`);
           // Direct database query - workflow definitions are rarely changed
           workflow = await this.db.getRepository('workflows').findOne({
             filterByTk: workflowId,
@@ -304,6 +304,7 @@ export default class PluginWorkflowServer extends Plugin {
     const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
     
     if (isClusterMode) {
+      console.log(`[CLUSTER] Creating fresh logger for workflow ${workflowId} (bypassing cache)`);
       return this.createLogger({
         dirname: path.join('workflows', String(workflowId)),
         filename: '%DATE%.log',

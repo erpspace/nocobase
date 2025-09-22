@@ -27,6 +27,13 @@ class BackgroundJobManager {
   private subscriptions: Map<string, BackgroundJobEventOptions> = new Map(); // topic -> handler
   private processing: Promise<void> | null = null;
 
+  /**
+   * In cluster mode, log background job operations for debugging
+   */
+  private isClusterMode(): boolean {
+    return process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+  }
+
   private get channel() {
     return this.options.channel ?? BackgroundJobManager.DEFAULT_CHANNEL;
   }
@@ -87,6 +94,10 @@ class BackgroundJobManager {
 
     this.subscriptions.set(topic, options);
     this.app.logger.debug(`Subscribed to background job topic: ${topic}`);
+    
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] Subscribed to background job topic: ${topic}`);
+    }
   }
 
   /**

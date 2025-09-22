@@ -54,6 +54,13 @@ export class WSServer extends EventEmitter {
   logger: Logger;
   private redisWSManager: any = null;
 
+  /**
+   * In cluster mode, log WebSocket operations for debugging
+   */
+  private isClusterMode(): boolean {
+    return process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+  }
+
   constructor() {
     super();
     this.wss = new WSS({ noServer: true });
@@ -64,7 +71,11 @@ export class WSServer extends EventEmitter {
     this.wss.on('connection', (ws: WebSocketWithId, request: IncomingMessage) => {
       const client = this.addNewConnection(ws, request);
 
-      console.log(`new client connected ${ws.id}`);
+      if (this.isClusterMode()) {
+        console.log(`[CLUSTER] New WebSocket client connected: ${ws.id}`);
+      } else {
+        console.log(`new client connected ${ws.id}`);
+      }
 
       ws.on('error', () => {
         this.removeConnection(ws.id);
@@ -304,6 +315,10 @@ export class WSServer extends EventEmitter {
 
     this.webSocketClients.set(id, client);
 
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] Added new WebSocket connection: ${id}`);
+    }
+
     this.setClientApp(client);
 
     // Sync with Redis if cluster mode is enabled
@@ -362,9 +377,14 @@ export class WSServer extends EventEmitter {
   }
 
   removeConnection(id: string) {
-    console.log(`client disconnected ${id}`);
     const client = this.webSocketClients.get(id);
     this.webSocketClients.delete(id);
+
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] WebSocket client disconnected: ${id}`);
+    } else {
+      console.log(`client disconnected ${id}`);
+    }
 
     // Sync with Redis if cluster mode is enabled
     if (this.redisWSManager && client) {

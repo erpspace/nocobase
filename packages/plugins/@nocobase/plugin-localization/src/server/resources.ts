@@ -28,6 +28,7 @@ export default class Resources {
     const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
     
     if (isClusterMode) {
+      console.log('[CLUSTER] Loading localization texts from database (bypassing cache)');
       return await this.db.getRepository('localizationTexts').find({
         fields: ['id', 'module', 'text'],
         raw: true,
@@ -53,6 +54,7 @@ export default class Resources {
     const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
     
     if (isClusterMode) {
+      console.log(`[CLUSTER] Loading localization translations for ${locale} from database (bypassing cache)`);
       return await this.db.getRepository('localizationTranslations').find({
         fields: ['textId', 'translation'],
         filter: { locale },

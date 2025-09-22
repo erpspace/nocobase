@@ -15,6 +15,13 @@ export class CronJobManager {
 
   private _started = false;
 
+  /**
+   * In cluster mode, log cron operations for debugging
+   */
+  private isClusterMode(): boolean {
+    return process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+  }
+
   constructor(private app: Application) {
     app.on('beforeStop', async () => {
       this.stop();
@@ -40,6 +47,10 @@ export class CronJobManager {
   public addJob(options: CronJobParameters) {
     const cronJob = new CronJob(options);
     this._jobs.add(cronJob);
+
+    if (this.isClusterMode()) {
+      console.log(`[CLUSTER] Added cron job: ${options.name || 'unnamed'}`);
+    }
 
     return cronJob;
   }

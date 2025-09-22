@@ -826,7 +826,7 @@ export class PluginDataSourceManagerServer extends Plugin {
     }
 
     // Fallback: Direct database query
-    console.log(`[CLUSTER] Loading data source ${dataSourceKey} from database`);
+    console.log(`[CLUSTER] Loading data source ${dataSourceKey} from database (bypassing cache)`);
     const dataSourceModel = await this.app.db.getRepository('dataSources').findOne({
       filter: {
         key: dataSourceKey,

@@ -47,6 +47,14 @@ export class PluginSystemSettingsServer extends Plugin {
 
   async getSystemSettingsInstance() {
     const repository = this.db.getRepository('systemSettings');
+    
+    // In cluster mode, always bypass cache to ensure fresh data from database
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (isClusterMode) {
+      console.log('[CLUSTER] Loading system settings from database (bypassing cache)');
+    }
+    
     const instance = await repository.findOne({
       filterByTk: 1,
       appends: ['logo'],
@@ -96,6 +104,13 @@ export class PluginSystemSettingsServer extends Plugin {
               title: values.raw_title,
             },
           });
+          
+          // In cluster mode, log system settings update
+          const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+          if (isClusterMode) {
+            console.log('[CLUSTER] System settings updated');
+          }
+          
           ctx.body = await this.getSystemSettingsInstance();
           await next();
         },

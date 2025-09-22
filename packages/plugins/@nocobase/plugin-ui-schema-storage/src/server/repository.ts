@@ -196,6 +196,10 @@ export class UiSchemaRepository extends Repository {
     // In cluster mode, always bypass cache to ensure fresh data from database
     const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
     
+    if (isClusterMode) {
+      console.log(`[CLUSTER] Loading UI properties ${uid} from database (bypassing cache)`);
+    }
+    
     if (options?.readFromCache && this.cache && !isClusterMode) {
       return this.cache.wrap(`p_${uid}`, () => {
         return this.doGetProperties(uid, options);
@@ -227,6 +231,10 @@ export class UiSchemaRepository extends Repository {
   async getJsonSchema(uid: string, options?: GetJsonSchemaOptions): Promise<any> {
     // In cluster mode, always bypass cache to ensure fresh data from database
     const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (isClusterMode) {
+      console.log(`[CLUSTER] Loading UI schema ${uid} from database (bypassing cache)`);
+    }
     
     if (options?.readFromCache && this.cache && !isClusterMode) {
       return this.cache.wrap(`s_${uid}`, () => {

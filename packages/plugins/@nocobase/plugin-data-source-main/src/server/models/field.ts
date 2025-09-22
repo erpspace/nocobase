@@ -28,23 +28,27 @@ export class FieldModel extends MagicAttributeModel {
     return ['belongsTo', 'hasOne', 'hasMany', 'belongsToMany'].includes(this.get('type'));
   }
 
-  async load(loadOptions?: LoadOptions) {
-    const { skipExist = false, transaction } = loadOptions || {};
-    const collectionName = this.get('collectionName');
+      async load(loadOptions?: LoadOptions) {
+        const { skipExist = false, transaction } = loadOptions || {};
+        const collectionName = this.get('collectionName');
 
-    if (!this.db.hasCollection(collectionName)) {
-      return;
-    }
+        if (!this.db.hasCollection(collectionName)) {
+          return;
+        }
 
-    const collection = this.db.getCollection(collectionName);
-    const name = this.get('name');
+        const collection = this.db.getCollection(collectionName);
+        const name = this.get('name');
 
-    // In cluster mode, always reload fields from database to ensure synchronization
-    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
-    
-    if (skipExist && collection.hasField(name) && !isClusterMode) {
-      return collection.getField(name);
-    }
+        // In cluster mode, always reload fields from database to ensure synchronization
+        const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+
+        if (skipExist && collection.hasField(name) && !isClusterMode) {
+          return collection.getField(name);
+        }
+
+        if (isClusterMode) {
+          console.log(`[CLUSTER] Loading field ${name} for collection ${collectionName} from database`);
+        }
 
     const options = this.toJSON();
 

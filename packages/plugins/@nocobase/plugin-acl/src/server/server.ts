@@ -83,7 +83,7 @@ export class PluginACLServer extends Plugin {
     }
 
     // Fallback: Direct database query
-    console.log(`[CLUSTER] Loading ACL role ${roleName} from database`);
+    console.log(`[CLUSTER] Loading ACL role ${roleName} from database (bypassing cache)`);
     const role = await this.app.db.getRepository('roles').findOne({
       filter: {
         name: roleName,

@@ -78,6 +78,13 @@ export class PluginManager {
   pluginAliases = new Map<string, Plugin>();
 
   /**
+   * In cluster mode, log plugin operations for debugging
+   */
+  private isClusterMode(): boolean {
+    return process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+  }
+
+  /**
    * @internal
    */
   server: net.Server;

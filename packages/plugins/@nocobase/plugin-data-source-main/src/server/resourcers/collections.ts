@@ -15,6 +15,22 @@ export default {
     const db = ctx.app.db as Database;
     const results = [];
 
+    // In cluster mode, always reload collections from database to ensure fresh data
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    if (isClusterMode) {
+      console.log('[CLUSTER] Reloading collections from database for listMeta');
+      // Force reload all collections from database
+      const collectionModels = await db.getRepository('collections').find({
+        filter: {
+          loadedFromCollectionManager: true,
+        },
+      });
+      
+      for (const model of collectionModels) {
+        await model.load();
+      }
+    }
+
     db.collections.forEach((collection) => {
       if (!collection.options.loadedFromCollectionManager) {
         return;
@@ -138,6 +154,14 @@ export default {
         if (plugin && plugin.invalidateCollectionCache) {
           await plugin.invalidateCollectionCache(filterByTk);
         }
+
+        // CRITICAL: Force reload collection on ALL instances immediately
+        await ctx.app.syncMessageManager.publish('data-source-main', {
+          type: 'forceReloadCollection',
+          collectionName: filterByTk,
+        }, {
+          transaction,
+        });
       }
 
       await transaction.commit();

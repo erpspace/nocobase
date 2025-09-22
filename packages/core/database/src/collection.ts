@@ -431,27 +431,28 @@ export class Collection<
   }
 
   @EnsureAtomicity
-  setField(name: string, options: FieldOptions): Field {
-    checkIdentifier(name);
-    this.checkFieldType(name, options);
+      setField(name: string, options: FieldOptions): Field {
+        checkIdentifier(name);
+        this.checkFieldType(name, options);
 
-    const { database } = this.context;
+        const { database } = this.context;
 
-    database.logger.trace(`beforeSetField: ${safeJsonStringify(options)}`, {
-      databaseInstanceId: database.instanceId,
-      collectionName: this.name,
-      fieldName: name,
-    });
+        database.logger.trace(`beforeSetField: ${safeJsonStringify(options)}`, {
+          databaseInstanceId: database.instanceId,
+          collectionName: this.name,
+          fieldName: name,
+        });
 
-    // In cluster mode, always reload field from database to ensure synchronization
-    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
-    if (isClusterMode) {
-      database.logger.trace(`Cluster mode detected - reloading field ${name} from database`, {
-        databaseInstanceId: database.instanceId,
-        collectionName: this.name,
-        fieldName: name,
-      });
-    }
+        // In cluster mode, always reload field from database to ensure synchronization
+        const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+        if (isClusterMode) {
+          console.log(`[CLUSTER] Setting field ${name} for collection ${this.name} - forcing reload from database`);
+          database.logger.trace(`Cluster mode detected - reloading field ${name} from database`, {
+            databaseInstanceId: database.instanceId,
+            collectionName: this.name,
+            fieldName: name,
+          });
+        }
 
     if (options.source) {
       const [sourceCollectionName, sourceFieldName] = options.source.split('.');
@@ -523,46 +524,48 @@ export class Collection<
     return field;
   }
 
-  setFields(fields: FieldOptions[], resetFields = true) {
-    if (!Array.isArray(fields)) {
-      return;
-    }
+      setFields(fields: FieldOptions[], resetFields = true) {
+        if (!Array.isArray(fields)) {
+          return;
+        }
 
-    if (resetFields) {
-      this.resetFields();
-    }
+        if (resetFields) {
+          this.resetFields();
+        }
 
-    // In cluster mode, log field setting for debugging
-    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
-    if (isClusterMode) {
-      this.db.logger.trace(`Cluster mode: setting fields for collection ${this.name}`, {
-        databaseInstanceId: this.db.instanceId,
-        collectionName: this.name,
-        fieldCount: fields.length,
-      });
-    }
+        // In cluster mode, log field setting for debugging
+        const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+        if (isClusterMode) {
+          console.log(`[CLUSTER] Setting ${fields.length} fields for collection ${this.name}`);
+          this.db.logger.trace(`Cluster mode: setting fields for collection ${this.name}`, {
+            databaseInstanceId: this.db.instanceId,
+            collectionName: this.name,
+            fieldCount: fields.length,
+          });
+        }
 
-    for (const { name, ...options } of fields) {
-      this.addField(name, options);
-    }
-  }
+        for (const { name, ...options } of fields) {
+          this.addField(name, options);
+        }
+      }
 
-  resetFields() {
-    const fieldNames = Array.from(this.fields.keys());
-    for (const fieldName of fieldNames) {
-      this.removeField(fieldName);
-    }
-    
-    // In cluster mode, log field reset for debugging
-    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
-    if (isClusterMode) {
-      this.db.logger.trace(`Cluster mode: reset fields for collection ${this.name}`, {
-        databaseInstanceId: this.db.instanceId,
-        collectionName: this.name,
-        resetFieldCount: fieldNames.length,
-      });
-    }
-  }
+      resetFields() {
+        const fieldNames = Array.from(this.fields.keys());
+        for (const fieldName of fieldNames) {
+          this.removeField(fieldName);
+        }
+
+        // In cluster mode, log field reset for debugging
+        const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+        if (isClusterMode) {
+          console.log(`[CLUSTER] Reset ${fieldNames.length} fields for collection ${this.name}`);
+          this.db.logger.trace(`Cluster mode: reset fields for collection ${this.name}`, {
+            databaseInstanceId: this.db.instanceId,
+            collectionName: this.name,
+            resetFieldCount: fieldNames.length,
+          });
+        }
+      }
 
   remove() {
     return this.context.database.removeCollection(this.name);

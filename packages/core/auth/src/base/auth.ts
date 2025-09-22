@@ -107,15 +107,25 @@ export class BaseAuth extends Auth {
 
     const { userId, roleName, iat, temp, jti, exp, signInTime } = payload ?? {};
 
+    // In cluster mode, always bypass user cache to ensure fresh data
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
     const user = userId
-      ? await cache.wrap(this.getCacheKey(userId), () =>
-          this.userRepository.findOne({
+      ? isClusterMode
+        ? await this.userRepository.findOne({
             filter: {
               id: userId,
             },
             raw: true,
-          }),
-        )
+          })
+        : await cache.wrap(this.getCacheKey(userId), () =>
+            this.userRepository.findOne({
+              filter: {
+                id: userId,
+              },
+              raw: true,
+            }),
+          )
       : null;
 
     if (!user) {

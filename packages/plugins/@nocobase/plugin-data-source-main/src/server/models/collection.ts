@@ -67,25 +67,26 @@ export class CollectionModel extends MagicAttributeModel {
       collectionOptions.schema = process.env.COLLECTION_MANAGER_SCHEMA || this.db.options.schema || 'public';
     }
 
-    if (this.db.hasCollection(name)) {
-      collection = this.db.getCollection(name);
+        if (this.db.hasCollection(name)) {
+          collection = this.db.getCollection(name);
 
-      if (skipExist) {
-        return collection;
-      }
+          if (skipExist) {
+            return collection;
+          }
 
-      if (resetFields) {
-        collection.resetFields();
-      }
+          if (resetFields) {
+            collection.resetFields();
+          }
 
-      // In cluster mode, always reset fields to ensure fresh data from database
-      const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
-      if (isClusterMode) {
-        collection.resetFields();
-      }
+          // In cluster mode, always reset fields to ensure fresh data from database
+          const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+          if (isClusterMode) {
+            console.log(`[CLUSTER] Resetting fields for collection ${name} to ensure fresh data`);
+            collection.resetFields();
+          }
 
-      collection.updateOptions(collectionOptions);
-    } else {
+          collection.updateOptions(collectionOptions);
+        } else {
       if (!collectionOptions.dumpRules) {
         lodash.set(collectionOptions, 'dumpRules.group', 'custom');
       }
@@ -109,21 +110,22 @@ export class CollectionModel extends MagicAttributeModel {
     return collection;
   }
 
-  async loadFields(
-    options: Transactionable & {
-      skipField?: Array<string>;
-      includeFields?: Array<string>;
-    } = {},
-  ) {
-    let fields = this.get('fields') || [];
+      async loadFields(
+        options: Transactionable & {
+          skipField?: Array<string>;
+          includeFields?: Array<string>;
+        } = {},
+      ) {
+        let fields = this.get('fields') || [];
 
-    // In cluster mode, always reload fields from database to ensure synchronization
-    // Check if we're in cluster mode by looking for CLUSTER_MODE environment variable
-    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
-    
-    if (!fields.length || isClusterMode) {
-      fields = await this.getFields(options);
-    }
+        // In cluster mode, always reload fields from database to ensure synchronization
+        // Check if we're in cluster mode by looking for CLUSTER_MODE environment variable
+        const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+
+        if (!fields.length || isClusterMode) {
+          console.log(`[CLUSTER] Loading fields for collection ${this.get('name')} from database`);
+          fields = await this.getFields(options);
+        }
 
     if (options.skipField) {
       fields = fields.filter((field) => !options.skipField.includes(field.name));
