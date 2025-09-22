@@ -55,8 +55,8 @@ export class PubSubManager {
   }
 
   private initializeAdapter() {
-    if (ClusterModeManager?.isEnabled() && RedisPubSubAdapter) {
-      // Use Redis adapter in cluster mode
+    if (process.env.ERPSPACE_MULTICORE_ENABLED === 'true' && RedisPubSubAdapter) {
+      // Use Redis adapter in multicore mode
       this.setAdapter(new RedisPubSubAdapter());
     }
     // If no adapter is set, it will be set manually via setAdapter()
