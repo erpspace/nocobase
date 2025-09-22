@@ -107,7 +107,10 @@ export class PluginFileManagerServer extends Plugin {
   async uploadFile(options: UploadFileOptions) {
     const { storageName, filePath, documentRoot } = options;
 
-    if (!this.storagesCache.size) {
+    // In cluster mode, always reload storages from database to ensure fresh data
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (isClusterMode || !this.storagesCache.size) {
       await this.loadStorages();
     }
     const storages = Array.from(this.storagesCache.values());
@@ -152,13 +155,18 @@ export class PluginFileManagerServer extends Plugin {
   }
 
   async loadStorages(options?: { transaction: any }) {
-    const repository = this.db.getRepository('storages');
-    const storages = await repository.find({
-      transaction: options?.transaction,
-    });
-    this.storagesCache = new Map();
-    for (const storage of storages) {
-      this.storagesCache.set(storage.get('id'), this.parseStorage(storage));
+    // In cluster mode, always reload storages from database to ensure fresh data
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (isClusterMode || !this.storagesCache.size) {
+      const repository = this.db.getRepository('storages');
+      const storages = await repository.find({
+        transaction: options?.transaction,
+      });
+      this.storagesCache = new Map();
+      for (const storage of storages) {
+        this.storagesCache.set(storage.get('id'), this.parseStorage(storage));
+      }
     }
   }
 

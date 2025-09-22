@@ -111,7 +111,8 @@ class PluginFileManagerServer extends import_server.Plugin {
   }
   async uploadFile(options) {
     const { storageName, filePath, documentRoot } = options;
-    if (!this.storagesCache.size) {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode || !this.storagesCache.size) {
       await this.loadStorages();
     }
     const storages = Array.from(this.storagesCache.values());
@@ -146,13 +147,16 @@ class PluginFileManagerServer extends import_server.Plugin {
     return storageInstance.getFileData(file, {});
   }
   async loadStorages(options) {
-    const repository = this.db.getRepository("storages");
-    const storages = await repository.find({
-      transaction: options == null ? void 0 : options.transaction
-    });
-    this.storagesCache = /* @__PURE__ */ new Map();
-    for (const storage of storages) {
-      this.storagesCache.set(storage.get("id"), this.parseStorage(storage));
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode || !this.storagesCache.size) {
+      const repository = this.db.getRepository("storages");
+      const storages = await repository.find({
+        transaction: options == null ? void 0 : options.transaction
+      });
+      this.storagesCache = /* @__PURE__ */ new Map();
+      for (const storage of storages) {
+        this.storagesCache.set(storage.get("id"), this.parseStorage(storage));
+      }
     }
   }
   async install() {

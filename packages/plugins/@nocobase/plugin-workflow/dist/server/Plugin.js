@@ -221,17 +221,28 @@ class PluginWorkflowServer extends import_server.Plugin {
   async syncWorkflowStatus(workflowId, enabled) {
     try {
       if (enabled) {
-        let workflow = this.enabledCache.get(workflowId);
-        if (workflow) {
-          console.log(`[CLUSTER] Reloading workflow ${workflowId} from local cache`);
-          await workflow.reload();
-        } else {
-          console.log(`[CLUSTER] Loading workflow ${workflowId} from database`);
+        const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+        let workflow = null;
+        if (isClusterMode) {
+          console.log(`[CLUSTER] Loading workflow ${workflowId} from database (cluster mode)`);
           workflow = await this.db.getRepository("workflows").findOne({
             filterByTk: workflowId,
             appends: ["nodes", "revisions"]
             // Include related data
           });
+        } else {
+          workflow = this.enabledCache.get(workflowId);
+          if (workflow) {
+            console.log(`[CLUSTER] Reloading workflow ${workflowId} from local cache`);
+            await workflow.reload();
+          } else {
+            console.log(`[CLUSTER] Loading workflow ${workflowId} from database`);
+            workflow = await this.db.getRepository("workflows").findOne({
+              filterByTk: workflowId,
+              appends: ["nodes", "revisions"]
+              // Include related data
+            });
+          }
         }
         if (workflow) {
           this.toggle(workflow, true, { silent: true });
@@ -256,6 +267,13 @@ class PluginWorkflowServer extends import_server.Plugin {
    * @experimental
    */
   getLogger(workflowId = "dispatcher") {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      return this.createLogger({
+        dirname: import_path.default.join("workflows", String(workflowId)),
+        filename: "%DATE%.log"
+      });
+    }
     const now = /* @__PURE__ */ new Date();
     const date = `${now.getFullYear()}-${`0${now.getMonth() + 1}`.slice(-2)}-${`0${now.getDate()}`.slice(-2)}`;
     const key = `${date}-${workflowId}}`;

@@ -147,7 +147,8 @@ const _UiSchemaRepository = class _UiSchemaRepository extends import_database.Re
    * @returns {Promise<void>}
    */
   async clearXUidPathCache(xUid, transaction2) {
-    if (!this.cache || !xUid) {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (!this.cache || !xUid || isClusterMode) {
       return;
     }
     const uiSchemaNodes = await this.database.getRepository("uiSchemaTreePath").find({
@@ -174,7 +175,8 @@ const _UiSchemaRepository = class _UiSchemaRepository extends import_database.Re
     return sql;
   }
   async getProperties(uid2, options = {}) {
-    if ((options == null ? void 0 : options.readFromCache) && this.cache) {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if ((options == null ? void 0 : options.readFromCache) && this.cache && !isClusterMode) {
       return this.cache.wrap(`p_${uid2}`, () => {
         return this.doGetProperties(uid2, options);
       });
@@ -196,7 +198,8 @@ const _UiSchemaRepository = class _UiSchemaRepository extends import_database.Re
     return this.getJsonSchema(parentUid, options);
   }
   async getJsonSchema(uid2, options) {
-    if ((options == null ? void 0 : options.readFromCache) && this.cache) {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if ((options == null ? void 0 : options.readFromCache) && this.cache && !isClusterMode) {
       return this.cache.wrap(`s_${uid2}`, () => {
         return this.doGetJsonSchema(uid2, options);
       });

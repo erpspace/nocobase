@@ -248,19 +248,32 @@ export default class PluginWorkflowServer extends Plugin {
   async syncWorkflowStatus(workflowId: number, enabled: boolean) {
     try {
       if (enabled) {
-        // Try to get from local cache first
-        let workflow = this.enabledCache.get(workflowId);
+        // In cluster mode, always reload from database to ensure fresh data
+        const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
         
-        if (workflow) {
-          console.log(`[CLUSTER] Reloading workflow ${workflowId} from local cache`);
-          await workflow.reload();
-        } else {
-          console.log(`[CLUSTER] Loading workflow ${workflowId} from database`);
+        let workflow = null;
+        if (isClusterMode) {
+          console.log(`[CLUSTER] Loading workflow ${workflowId} from database (cluster mode)`);
           // Direct database query - workflow definitions are rarely changed
           workflow = await this.db.getRepository('workflows').findOne({
             filterByTk: workflowId,
             appends: ['nodes', 'revisions'], // Include related data
           });
+        } else {
+          // Try to get from local cache first
+          workflow = this.enabledCache.get(workflowId);
+          
+          if (workflow) {
+            console.log(`[CLUSTER] Reloading workflow ${workflowId} from local cache`);
+            await workflow.reload();
+          } else {
+            console.log(`[CLUSTER] Loading workflow ${workflowId} from database`);
+            // Direct database query - workflow definitions are rarely changed
+            workflow = await this.db.getRepository('workflows').findOne({
+              filterByTk: workflowId,
+              appends: ['nodes', 'revisions'], // Include related data
+            });
+          }
         }
         
         if (workflow) {
@@ -287,6 +300,16 @@ export default class PluginWorkflowServer extends Plugin {
    * @experimental
    */
   getLogger(workflowId: ID = 'dispatcher'): Logger {
+    // In cluster mode, always create fresh logger to avoid cache issues
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (isClusterMode) {
+      return this.createLogger({
+        dirname: path.join('workflows', String(workflowId)),
+        filename: '%DATE%.log',
+      } as LoggerOptions);
+    }
+    
     const now = new Date();
     const date = `${now.getFullYear()}-${`0${now.getMonth() + 1}`.slice(-2)}-${`0${now.getDate()}`.slice(-2)}`;
     const key = `${date}-${workflowId}}`;

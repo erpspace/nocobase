@@ -40,6 +40,14 @@ class Resources {
     if (!await this.db.collectionExistsInDb("localizationTexts")) {
       return [];
     }
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      return await this.db.getRepository("localizationTexts").find({
+        fields: ["id", "module", "text"],
+        raw: true,
+        transaction
+      });
+    }
     return await this.cache.wrap(`texts`, async () => {
       return await this.db.getRepository("localizationTexts").find({
         fields: ["id", "module", "text"],
@@ -51,6 +59,14 @@ class Resources {
   async getTranslations(locale) {
     if (!await this.db.collectionExistsInDb("localizationTranslations")) {
       return [];
+    }
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      return await this.db.getRepository("localizationTranslations").find({
+        fields: ["textId", "translation"],
+        filter: { locale },
+        raw: true
+      });
     }
     return await this.cache.wrap(`translations:${locale}`, async () => {
       return await this.db.getRepository("localizationTranslations").find({
@@ -87,6 +103,10 @@ class Resources {
     });
   }
   async updateCacheTexts(texts, transaction) {
+    const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
+    if (isClusterMode) {
+      return;
+    }
     const newTexts = texts.map((text) => ({
       id: text.id,
       module: text.module,

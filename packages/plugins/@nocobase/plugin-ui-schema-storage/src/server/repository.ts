@@ -158,7 +158,10 @@ export class UiSchemaRepository extends Repository {
    * @returns {Promise<void>}
    */
   async clearXUidPathCache(xUid: string, transaction: Transaction) {
-    if (!this.cache || !xUid) {
+    // In cluster mode, always bypass cache operations to ensure fresh data
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (!this.cache || !xUid || isClusterMode) {
       return;
     }
     // find all xUid node's parent nodes
@@ -190,7 +193,10 @@ export class UiSchemaRepository extends Repository {
   }
 
   async getProperties(uid: string, options: GetPropertiesOptions = {}) {
-    if (options?.readFromCache && this.cache) {
+    // In cluster mode, always bypass cache to ensure fresh data from database
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (options?.readFromCache && this.cache && !isClusterMode) {
       return this.cache.wrap(`p_${uid}`, () => {
         return this.doGetProperties(uid, options);
       });
@@ -219,7 +225,10 @@ export class UiSchemaRepository extends Repository {
   }
 
   async getJsonSchema(uid: string, options?: GetJsonSchemaOptions): Promise<any> {
-    if (options?.readFromCache && this.cache) {
+    // In cluster mode, always bypass cache to ensure fresh data from database
+    const isClusterMode = process.env.CLUSTER_MODE === 'max' || process.env.CLUSTER_MODE === 'true';
+    
+    if (options?.readFromCache && this.cache && !isClusterMode) {
       return this.cache.wrap(`s_${uid}`, () => {
         return this.doGetJsonSchema(uid, options);
       });
