@@ -124,6 +124,22 @@ export default {
         transaction,
       } as any);
 
+      // Send sync message to other instances after field changes
+      if (needCreatedFields.length > 0 || needUpdateFields.length > 0 || needDestroyFields.length > 0) {
+        await ctx.app.syncMessageManager.publish('data-source-main', {
+          type: 'syncCollection',
+          collectionName: filterByTk,
+        }, {
+          transaction,
+        });
+
+        // Invalidate collection cache to force reload on other instances
+        const plugin = ctx.app.getPlugin('@nocobase/plugin-data-source-main') as any;
+        if (plugin && plugin.invalidateCollectionCache) {
+          await plugin.invalidateCollectionCache(filterByTk);
+        }
+      }
+
       await transaction.commit();
     } catch (e) {
       await transaction.rollback();

@@ -41,6 +41,8 @@ export class PluginDataSourceMainServer extends Plugin {
     const { type, collectionName } = message;
 
     if (type === 'syncCollection') {
+      // Invalidate cache first to ensure fresh data
+      await this.invalidateCollectionCache(collectionName);
       await this.syncCollectionWithFallback(collectionName);
     }
 
@@ -51,6 +53,8 @@ export class PluginDataSourceMainServer extends Plugin {
         return;
       }
 
+      // Invalidate cache when field is removed
+      await this.invalidateCollectionCache(collectionName);
       return collection.removeFieldFromDb(fieldName);
     }
 
@@ -61,6 +65,8 @@ export class PluginDataSourceMainServer extends Plugin {
         return;
       }
 
+      // Invalidate cache when collection is removed
+      await this.invalidateCollectionCache(collectionName);
       collection.remove();
     }
   }
@@ -602,6 +608,21 @@ export class PluginDataSourceMainServer extends Plugin {
           options: {},
         },
       });
+    }
+  }
+
+  /**
+   * Invalidate collection cache when fields are modified
+   */
+  async invalidateCollectionCache(collectionName: string) {
+    if (this.app.cache && (this.app.cache.store as any)?.name === 'redis') {
+      try {
+        const cacheKey = `collection:${collectionName}`;
+        await this.app.cache.del(cacheKey);
+        console.log(`[CLUSTER] Invalidated cache for collection ${collectionName}`);
+      } catch (error) {
+        console.warn(`[CLUSTER] Failed to invalidate cache for collection ${collectionName}:`, error);
+      }
     }
   }
 }

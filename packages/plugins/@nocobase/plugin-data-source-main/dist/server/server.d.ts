@@ -19,5 +19,9 @@ export declare class PluginDataSourceMainServer extends Plugin {
     beforeLoad(): Promise<void>;
     load(): Promise<void>;
     install(): Promise<void>;
+    /**
+     * Invalidate collection cache when fields are modified
+     */
+    invalidateCollectionCache(collectionName: string): Promise<void>;
 }
 export default PluginDataSourceMainServer;

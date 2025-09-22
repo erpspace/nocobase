@@ -130,6 +130,18 @@ var collections_default = {
         },
         transaction
       });
+      if (needCreatedFields.length > 0 || needUpdateFields.length > 0 || needDestroyFields.length > 0) {
+        await ctx.app.syncMessageManager.publish("data-source-main", {
+          type: "syncCollection",
+          collectionName: filterByTk
+        }, {
+          transaction
+        });
+        const plugin = ctx.app.getPlugin("@nocobase/plugin-data-source-main");
+        if (plugin && plugin.invalidateCollectionCache) {
+          await plugin.invalidateCollectionCache(filterByTk);
+        }
+      }
       await transaction.commit();
     } catch (e) {
       await transaction.rollback();
