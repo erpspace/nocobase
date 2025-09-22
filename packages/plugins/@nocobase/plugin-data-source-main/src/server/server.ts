@@ -41,13 +41,7 @@ export class PluginDataSourceMainServer extends Plugin {
     const { type, collectionName } = message;
 
     if (type === 'syncCollection') {
-      const collectionModel: CollectionModel = await this.app.db.getCollection('collections').repository.findOne({
-        filter: {
-          name: collectionName,
-        },
-      });
-
-      await collectionModel.load();
+      await this.syncCollectionWithFallback(collectionName);
     }
 
     if (type === 'removeField') {
@@ -68,6 +62,62 @@ export class PluginDataSourceMainServer extends Plugin {
       }
 
       collection.remove();
+    }
+  }
+
+  /**
+   * Enhanced collection synchronization with Redis cache and database fallback
+   */
+  async syncCollectionWithFallback(collectionName: string) {
+    try {
+      // Try to get from Redis cache first (if available)
+      if (this.app.cache && (this.app.cache.store as any)?.name === 'redis') {
+        const cacheKey = `collection:${collectionName}`;
+        const cachedCollection = await this.app.cache.get(cacheKey);
+        
+        if (cachedCollection) {
+          console.log(`[CLUSTER] Loaded collection ${collectionName} from Redis cache`);
+          // Load the cached collection data
+          const collectionModel = await this.app.db.getCollection('collections').repository.findOne({
+            filter: { name: collectionName },
+          });
+          
+          if (collectionModel) {
+            await collectionModel.load();
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`[CLUSTER] Redis cache unavailable for collection ${collectionName}, falling back to database:`, error.message);
+    }
+
+    // Fallback: Direct database query
+    console.log(`[CLUSTER] Loading collection ${collectionName} from database`);
+    const collectionModel: CollectionModel = await this.app.db.getCollection('collections').repository.findOne({
+      filter: {
+        name: collectionName,
+      },
+    });
+
+    if (collectionModel) {
+      await collectionModel.load();
+      
+      // Cache the collection in Redis for future use
+      try {
+        if (this.app.cache && (this.app.cache.store as any)?.name === 'redis') {
+          const cacheKey = `collection:${collectionName}`;
+          await this.app.cache.set(cacheKey, { 
+            name: collectionName, 
+            loaded: true, 
+            timestamp: Date.now() 
+          }, 300); // Cache for 5 minutes
+        }
+      } catch (error) {
+        console.warn(`[CLUSTER] Failed to cache collection ${collectionName}:`, error.message);
+      }
+    } else {
+      console.warn(`[CLUSTER] Collection ${collectionName} not found in database`);
     }
   }
 

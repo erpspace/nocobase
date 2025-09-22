@@ -16,6 +16,10 @@ export declare class PluginACLServer extends Plugin {
     writeResourceToACL(resourceModel: RoleResourceModel, transaction: Transaction): Promise<void>;
     writeActionToACL(actionModel: RoleResourceActionModel, transaction: Transaction): Promise<void>;
     handleSyncMessage(message: any): Promise<void>;
+    /**
+     * Enhanced role synchronization with Redis cache and database fallback
+     */
+    syncRoleWithCache(roleName: string): Promise<void>;
     writeRolesToACL(options: any): Promise<void>;
     writeRoleToACL(role: RoleModel, options?: any): Promise<void>;
     beforeLoad(): Promise<void>;

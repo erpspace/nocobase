@@ -12,6 +12,10 @@ export declare class PluginDataSourceMainServer extends Plugin {
     private loadFilter;
     setLoadFilter(filter: Filter): void;
     handleSyncMessage(message: any): Promise<void>;
+    /**
+     * Enhanced collection synchronization with Redis cache and database fallback
+     */
+    syncCollectionWithFallback(collectionName: string): Promise<void>;
     beforeLoad(): Promise<void>;
     load(): Promise<void>;
     install(): Promise<void>;

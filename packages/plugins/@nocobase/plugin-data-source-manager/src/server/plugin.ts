@@ -77,19 +77,7 @@ export class PluginDataSourceManagerServer extends Plugin {
     }
     if (type === 'loadDataSource') {
       const { dataSourceKey } = message;
-      const dataSourceModel = await this.app.db.getRepository('dataSources').findOne({
-        filter: {
-          key: dataSourceKey,
-        },
-      });
-
-      if (!dataSourceModel) {
-        return;
-      }
-
-      await dataSourceModel.loadIntoApplication({
-        app: this.app,
-      });
+      await this.loadDataSourceWithFallback(dataSourceKey);
     }
 
     if (type === 'loadDataSourceField') {
@@ -813,6 +801,60 @@ export class PluginDataSourceManagerServer extends Plugin {
         },
       };
     });
+  }
+
+  /**
+   * Enhanced data source loading with Redis cache and database fallback
+   */
+  async loadDataSourceWithFallback(dataSourceKey: string) {
+    try {
+      // Try to get from Redis cache first (if available)
+      if (this.app.cache && (this.app.cache.store as any)?.name === 'redis') {
+        const cacheKey = `datasource:${dataSourceKey}`;
+        const cachedDataSource = await this.app.cache.get(cacheKey);
+        
+        if (cachedDataSource) {
+          console.log(`[CLUSTER] Loaded data source ${dataSourceKey} from Redis cache`);
+          // Check if data source is already loaded in memory
+          if (this.app.dataSourceManager.dataSources.has(dataSourceKey)) {
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`[CLUSTER] Redis cache unavailable for data source ${dataSourceKey}, falling back to database:`, error.message);
+    }
+
+    // Fallback: Direct database query
+    console.log(`[CLUSTER] Loading data source ${dataSourceKey} from database`);
+    const dataSourceModel = await this.app.db.getRepository('dataSources').findOne({
+      filter: {
+        key: dataSourceKey,
+      },
+    });
+
+    if (!dataSourceModel) {
+      console.warn(`[CLUSTER] Data source ${dataSourceKey} not found in database`);
+      return;
+    }
+
+    await dataSourceModel.loadIntoApplication({
+      app: this.app,
+    });
+
+    // Cache the data source in Redis for future use
+    try {
+      if (this.app.cache && (this.app.cache.store as any)?.name === 'redis') {
+        const cacheKey = `datasource:${dataSourceKey}`;
+        await this.app.cache.set(cacheKey, { 
+          key: dataSourceKey, 
+          loaded: true, 
+          timestamp: Date.now() 
+        }, 600); // Cache for 10 minutes
+      }
+    } catch (error) {
+      console.warn(`[CLUSTER] Failed to cache data source ${dataSourceKey}:`, error.message);
+    }
   }
 
   async load() {

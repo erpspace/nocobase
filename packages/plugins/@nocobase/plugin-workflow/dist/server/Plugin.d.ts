@@ -50,6 +50,11 @@ export default class PluginWorkflowServer extends Plugin {
     private onBeforeStop;
     handleSyncMessage(message: any): Promise<void>;
     /**
+     * Enhanced workflow synchronization with direct database queries
+     * Workflow definitions are rarely changed, so we can use direct DB queries
+     */
+    syncWorkflowStatus(workflowId: number, enabled: boolean): Promise<void>;
+    /**
      * @experimental
      */
     getLogger(workflowId?: ID): Logger;

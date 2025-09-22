@@ -22,6 +22,10 @@ export declare class PluginDataSourceManagerServer extends Plugin {
     };
     renderJsonTemplate(template: any): any;
     beforeLoad(): Promise<void>;
+    /**
+     * Enhanced data source loading with Redis cache and database fallback
+     */
+    loadDataSourceWithFallback(dataSourceKey: string): Promise<void>;
     load(): Promise<void>;
 }
 export default PluginDataSourceManagerServer;

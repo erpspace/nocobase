@@ -91,17 +91,7 @@ class PluginDataSourceManagerServer extends import_server.Plugin {
     }
     if (type === "loadDataSource") {
       const { dataSourceKey } = message;
-      const dataSourceModel = await this.app.db.getRepository("dataSources").findOne({
-        filter: {
-          key: dataSourceKey
-        }
-      });
-      if (!dataSourceModel) {
-        return;
-      }
-      await dataSourceModel.loadIntoApplication({
-        app: this.app
-      });
+      await this.loadDataSourceWithFallback(dataSourceKey);
     }
     if (type === "loadDataSourceField") {
       const { key } = message;
@@ -690,6 +680,51 @@ class PluginDataSourceManagerServer extends import_server.Plugin {
         }
       };
     });
+  }
+  /**
+   * Enhanced data source loading with Redis cache and database fallback
+   */
+  async loadDataSourceWithFallback(dataSourceKey) {
+    var _a, _b;
+    try {
+      if (this.app.cache && ((_a = this.app.cache.store) == null ? void 0 : _a.name) === "redis") {
+        const cacheKey = `datasource:${dataSourceKey}`;
+        const cachedDataSource = await this.app.cache.get(cacheKey);
+        if (cachedDataSource) {
+          console.log(`[CLUSTER] Loaded data source ${dataSourceKey} from Redis cache`);
+          if (this.app.dataSourceManager.dataSources.has(dataSourceKey)) {
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`[CLUSTER] Redis cache unavailable for data source ${dataSourceKey}, falling back to database:`, error.message);
+    }
+    console.log(`[CLUSTER] Loading data source ${dataSourceKey} from database`);
+    const dataSourceModel = await this.app.db.getRepository("dataSources").findOne({
+      filter: {
+        key: dataSourceKey
+      }
+    });
+    if (!dataSourceModel) {
+      console.warn(`[CLUSTER] Data source ${dataSourceKey} not found in database`);
+      return;
+    }
+    await dataSourceModel.loadIntoApplication({
+      app: this.app
+    });
+    try {
+      if (this.app.cache && ((_b = this.app.cache.store) == null ? void 0 : _b.name) === "redis") {
+        const cacheKey = `datasource:${dataSourceKey}`;
+        await this.app.cache.set(cacheKey, {
+          key: dataSourceKey,
+          loaded: true,
+          timestamp: Date.now()
+        }, 600);
+      }
+    } catch (error) {
+      console.warn(`[CLUSTER] Failed to cache data source ${dataSourceKey}:`, error.message);
+    }
   }
   async load() {
     await this.importCollections((0, import_path.resolve)(__dirname, "collections"));

@@ -78,17 +78,60 @@ class PluginACLServer extends import_server.Plugin {
     const { type } = message;
     if (type === "syncRole") {
       const { roleName } = message;
-      const role = await this.app.db.getRepository("roles").findOne({
-        filter: {
-          name: roleName
+      await this.syncRoleWithCache(roleName);
+    }
+  }
+  /**
+   * Enhanced role synchronization with Redis cache and database fallback
+   */
+  async syncRoleWithCache(roleName) {
+    var _a, _b;
+    try {
+      if (this.app.cache && ((_a = this.app.cache.store) == null ? void 0 : _a.name) === "redis") {
+        const cacheKey = `acl:role:${roleName}`;
+        const cachedRole = await this.app.cache.get(cacheKey);
+        if (cachedRole) {
+          console.log(`[CLUSTER] Loaded ACL role ${roleName} from Redis cache`);
+          const role2 = await this.app.db.getRepository("roles").findOne({
+            filter: { name: roleName }
+          });
+          if (role2) {
+            await this.writeRoleToACL(role2, { withOutResources: true });
+            await this.app.emitAsync("acl:writeResources", { roleName: role2.get("name") });
+            return;
+          }
         }
-      });
+      }
+    } catch (error) {
+      console.warn(`[CLUSTER] Redis cache unavailable for ACL role ${roleName}, falling back to database:`, error.message);
+    }
+    console.log(`[CLUSTER] Loading ACL role ${roleName} from database`);
+    const role = await this.app.db.getRepository("roles").findOne({
+      filter: {
+        name: roleName
+      }
+    });
+    if (role) {
       await this.writeRoleToACL(role, {
         withOutResources: true
       });
       await this.app.emitAsync("acl:writeResources", {
         roleName: role.get("name")
       });
+      try {
+        if (this.app.cache && ((_b = this.app.cache.store) == null ? void 0 : _b.name) === "redis") {
+          const cacheKey = `acl:role:${roleName}`;
+          await this.app.cache.set(cacheKey, {
+            name: roleName,
+            synced: true,
+            timestamp: Date.now()
+          }, 600);
+        }
+      } catch (error) {
+        console.warn(`[CLUSTER] Failed to cache ACL role ${roleName}:`, error.message);
+      }
+    } else {
+      console.warn(`[CLUSTER] ACL role ${roleName} not found in database`);
     }
   }
   async writeRolesToACL(options) {

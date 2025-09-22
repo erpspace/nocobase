@@ -94,11 +94,23 @@ const _HandlerManager = class _HandlerManager {
   wrapper(channel, callback, options) {
     const { debounce = 0 } = options;
     return async (wrappedMessage) => {
-      const json = JSON.parse(wrappedMessage);
-      if (!this.verifyMessage(json)) {
-        return;
+      try {
+        let json;
+        if (typeof wrappedMessage === "string") {
+          json = JSON.parse(wrappedMessage);
+        } else if (typeof wrappedMessage === "object" && wrappedMessage !== null) {
+          json = wrappedMessage;
+        } else {
+          console.error("[CLUSTER ERROR] Invalid message format:", typeof wrappedMessage, wrappedMessage);
+          return;
+        }
+        if (!this.verifyMessage(json)) {
+          return;
+        }
+        await this.handleMessage({ channel, message: json.message, debounce, callback });
+      } catch (error) {
+        console.error("[CLUSTER ERROR] Error parsing message:", error.message, "Message:", wrappedMessage);
       }
-      await this.handleMessage({ channel, message: json.message, debounce, callback });
     };
   }
   set(channel, callback, options) {

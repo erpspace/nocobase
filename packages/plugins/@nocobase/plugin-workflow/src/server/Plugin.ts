@@ -237,24 +237,49 @@ export default class PluginWorkflowServer extends Plugin {
 
   async handleSyncMessage(message) {
     if (message.type === 'statusChange') {
-      if (message.enabled) {
-        let workflow = this.enabledCache.get(message.workflowId);
+      await this.syncWorkflowStatus(message.workflowId, message.enabled);
+    }
+  }
+
+  /**
+   * Enhanced workflow synchronization with direct database queries
+   * Workflow definitions are rarely changed, so we can use direct DB queries
+   */
+  async syncWorkflowStatus(workflowId: number, enabled: boolean) {
+    try {
+      if (enabled) {
+        // Try to get from local cache first
+        let workflow = this.enabledCache.get(workflowId);
+        
         if (workflow) {
+          console.log(`[CLUSTER] Reloading workflow ${workflowId} from local cache`);
           await workflow.reload();
         } else {
+          console.log(`[CLUSTER] Loading workflow ${workflowId} from database`);
+          // Direct database query - workflow definitions are rarely changed
           workflow = await this.db.getRepository('workflows').findOne({
-            filterByTk: message.workflowId,
+            filterByTk: workflowId,
+            appends: ['nodes', 'revisions'], // Include related data
           });
         }
+        
         if (workflow) {
           this.toggle(workflow, true, { silent: true });
+          console.log(`[CLUSTER] Workflow ${workflowId} enabled successfully`);
+        } else {
+          console.warn(`[CLUSTER] Workflow ${workflowId} not found in database`);
         }
       } else {
-        const workflow = this.enabledCache.get(message.workflowId);
+        const workflow = this.enabledCache.get(workflowId);
         if (workflow) {
+          console.log(`[CLUSTER] Disabling workflow ${workflowId}`);
           this.toggle(workflow, false, { silent: true });
+        } else {
+          console.warn(`[CLUSTER] Workflow ${workflowId} not found in local cache for disabling`);
         }
       }
+    } catch (error) {
+      console.error(`[CLUSTER] Error syncing workflow ${workflowId}:`, error.message);
     }
   }
 
