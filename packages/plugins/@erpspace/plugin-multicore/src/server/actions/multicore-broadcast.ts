@@ -1,56 +1,31 @@
-/**
- * API action for broadcasting messages across instances
- */
-
 import { Context } from '@nocobase/actions';
 
 export async function broadcastMessage(ctx: Context) {
   const { app } = ctx;
-  const { type, data, targetInstance } = ctx.request.body;
+  const { type, data, targetInstance } = ctx.request.body as { type: string; data: any; targetInstance?: string };
   
   try {
-    // Get the multicore plugin
+    // Access the multicore plugin instance
     const multicorePlugin = app.getPlugin('@erpspace/plugin-multicore');
     
     if (!multicorePlugin) {
-      return ctx.throw(404, 'Multicore plugin not found');
+      ctx.throw(500, 'Multicore plugin not loaded');
     }
-
+    
     const wsManager = multicorePlugin.getWebSocketManager();
     
     if (!wsManager) {
-      return ctx.throw(500, 'WebSocket manager not available');
+      ctx.throw(500, 'WebSocket manager not initialized in multicore plugin');
     }
-
-    if (!type) {
-      return ctx.throw(400, 'Message type is required');
-    }
-
-    const message = {
-      type,
-      data: data || {},
-      targetApp: app.name
+    
+    await wsManager.broadcast(type, data, targetInstance);
+    
+    ctx.body = {
+      status: 'ok',
+      message: `Message of type "${type}" broadcasted.`
     };
-
-    if (targetInstance) {
-      // Send to specific instance
-      await wsManager.sendToInstance(targetInstance, message);
-      ctx.body = {
-        success: true,
-        message: `Message sent to instance ${targetInstance}`,
-        data: { type, targetInstance }
-      };
-    } else {
-      // Broadcast to all instances
-      await wsManager.broadcast(message);
-      ctx.body = {
-        success: true,
-        message: 'Message broadcasted to all instances',
-        data: { type }
-      };
-    }
   } catch (error) {
     console.error('[Multicore] Error broadcasting message:', error);
-    ctx.throw(500, 'Failed to broadcast message');
+    ctx.throw(500, `Failed to broadcast message: ${error.message}`);
   }
 }

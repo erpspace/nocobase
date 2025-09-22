@@ -1,34 +1,21 @@
-/**
- * Redis WebSocket Manager for NocoBase Multicore Plugin
- * Manages WebSocket connections across multiple instances using Redis
- */
-
 import { Redis } from 'ioredis';
-import { EventEmitter } from 'events';
 
-export interface WebSocketMessage {
-  type: string;
-  data: any;
-  instanceId: string;
-  targetApp?: string;
-}
-
-export class RedisWebSocketManager extends EventEmitter {
+export class RedisWebSocketManager {
   private redis: Redis;
   private subscriber: Redis;
   private connected = false;
-  private instanceId: string;
+  private clients: Map<string, any> = new Map();
 
-  constructor(instanceId: string, redisUrl: string = 'redis://localhost:6379') {
-    super();
-    this.instanceId = instanceId;
-    
-    this.redis = new Redis(redisUrl, {
+  constructor(
+    private instanceId: string,
+    private redisUrl: string = 'redis://localhost:6379'
+  ) {
+    this.redis = new Redis(this.redisUrl, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
 
-    this.subscriber = new Redis(redisUrl, {
+    this.subscriber = new Redis(this.redisUrl, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
@@ -38,11 +25,13 @@ export class RedisWebSocketManager extends EventEmitter {
 
   private setupEventHandlers(): void {
     this.redis.on('connect', () => {
-      console.log('[Multicore] Redis WebSocket publisher connected');
+      console.log('[Multicore] Redis WebSocket manager connected');
+      this.connected = true;
     });
 
     this.redis.on('error', (error) => {
-      console.error('[Multicore] Redis WebSocket publisher error', error);
+      console.error('[Multicore] Redis WebSocket manager error', error);
+      this.connected = false;
     });
 
     this.subscriber.on('connect', () => {
@@ -53,18 +42,10 @@ export class RedisWebSocketManager extends EventEmitter {
       console.error('[Multicore] Redis WebSocket subscriber error', error);
     });
 
-    // Listen for WebSocket messages
+    // Subscribe to WebSocket messages
     this.subscriber.on('message', (channel, message) => {
       if (channel.startsWith('nocobase:websocket:')) {
-        try {
-          const parsedMessage: WebSocketMessage = JSON.parse(message);
-          // Don't process messages from our own instance
-          if (parsedMessage.instanceId !== this.instanceId) {
-            this.emit('message', parsedMessage);
-          }
-        } catch (error) {
-          console.error('[Multicore] Error parsing WebSocket message:', error);
-        }
+        this.handleWebSocketMessage(channel, message);
       }
     });
   }
@@ -79,8 +60,9 @@ export class RedisWebSocketManager extends EventEmitter {
         this.subscriber.connect()
       ]);
       
-      // Subscribe to WebSocket messages
-      await this.subscriber.subscribe('nocobase:websocket:*');
+      // Subscribe to WebSocket channels
+      await this.subscriber.subscribe(`nocobase:websocket:${this.instanceId}`);
+      await this.subscriber.subscribe('nocobase:websocket:broadcast');
       
       this.connected = true;
       console.log('[Multicore] Redis WebSocket manager connected');
@@ -106,100 +88,114 @@ export class RedisWebSocketManager extends EventEmitter {
     }
   }
 
-  public async isConnected(): Promise<boolean> {
+  public isConnected(): boolean {
     return this.connected && this.redis.status === 'ready' && this.subscriber.status === 'ready';
-  }
-
-  public async broadcast(message: WebSocketMessage): Promise<void> {
-    try {
-      const messageWithInstance = {
-        ...message,
-        instanceId: this.instanceId,
-        timestamp: Date.now()
-      };
-      
-      const messageStr = JSON.stringify(messageWithInstance);
-      await this.redis.publish('nocobase:websocket:broadcast', messageStr);
-      console.log(`[Multicore] Broadcasted WebSocket message: ${message.type}`);
-    } catch (error) {
-      console.error('[Multicore] Error broadcasting WebSocket message:', error);
-      throw error;
-    }
-  }
-
-  public async sendToInstance(targetInstanceId: string, message: WebSocketMessage): Promise<void> {
-    try {
-      const messageWithInstance = {
-        ...message,
-        instanceId: this.instanceId,
-        targetInstanceId,
-        timestamp: Date.now()
-      };
-      
-      const messageStr = JSON.stringify(messageWithInstance);
-      await this.redis.publish(`nocobase:websocket:instance:${targetInstanceId}`, messageStr);
-      console.log(`[Multicore] Sent WebSocket message to instance ${targetInstanceId}: ${message.type}`);
-    } catch (error) {
-      console.error('[Multicore] Error sending WebSocket message to instance:', error);
-      throw error;
-    }
   }
 
   public async addClient(clientId: string, clientInfo: any): Promise<void> {
     try {
-      const clientKey = `nocobase:websocket:clients:${this.instanceId}`;
-      await this.redis.hset(clientKey, clientId, JSON.stringify({
+      const clientData = {
         ...clientInfo,
         instanceId: this.instanceId,
         connectedAt: Date.now()
-      }));
+      };
+      
+      await this.redis.hset(
+        `nocobase:websocket:clients:${this.instanceId}`,
+        clientId,
+        JSON.stringify(clientData)
+      );
+      
+      this.clients.set(clientId, clientData);
       console.log(`[Multicore] Added WebSocket client: ${clientId}`);
     } catch (error) {
-      console.error('[Multicore] Error adding WebSocket client:', error);
+      console.error(`[Multicore] Error adding WebSocket client ${clientId}:`, error);
       throw error;
     }
   }
 
   public async removeClient(clientId: string): Promise<void> {
     try {
-      const clientKey = `nocobase:websocket:clients:${this.instanceId}`;
-      await this.redis.hdel(clientKey, clientId);
+      await this.redis.hdel(
+        `nocobase:websocket:clients:${this.instanceId}`,
+        clientId
+      );
+      
+      this.clients.delete(clientId);
       console.log(`[Multicore] Removed WebSocket client: ${clientId}`);
     } catch (error) {
-      console.error('[Multicore] Error removing WebSocket client:', error);
+      console.error(`[Multicore] Error removing WebSocket client ${clientId}:`, error);
+      throw error;
+    }
+  }
+
+  public async broadcast(type: string, data: any, targetInstance?: string): Promise<void> {
+    try {
+      const message = {
+        type,
+        data,
+        from: this.instanceId,
+        timestamp: Date.now()
+      };
+
+      if (targetInstance) {
+        // Send to specific instance
+        await this.redis.publish(
+          `nocobase:websocket:${targetInstance}`,
+          JSON.stringify(message)
+        );
+        console.log(`[Multicore] Broadcasted message to instance ${targetInstance}: ${type}`);
+      } else {
+        // Broadcast to all instances
+        await this.redis.publish(
+          'nocobase:websocket:broadcast',
+          JSON.stringify(message)
+        );
+        console.log(`[Multicore] Broadcasted message to all instances: ${type}`);
+      }
+    } catch (error) {
+      console.error(`[Multicore] Error broadcasting message:`, error);
       throw error;
     }
   }
 
   public async getClients(): Promise<Map<string, any>> {
     try {
-      const clientKey = `nocobase:websocket:clients:${this.instanceId}`;
-      const clients = await this.redis.hgetall(clientKey);
-      
+      const clients = await this.redis.hgetall(`nocobase:websocket:clients:${this.instanceId}`);
       const clientMap = new Map();
+      
       for (const [clientId, clientData] of Object.entries(clients)) {
-        try {
-          clientMap.set(clientId, JSON.parse(clientData as string));
-        } catch (error) {
-          console.error(`[Multicore] Error parsing client data for ${clientId}:`, error);
-        }
+        clientMap.set(clientId, JSON.parse(clientData as string));
       }
       
       return clientMap;
     } catch (error) {
       console.error('[Multicore] Error getting WebSocket clients:', error);
-      throw error;
+      return new Map();
     }
   }
 
   public async getAllInstances(): Promise<string[]> {
     try {
-      const pattern = 'nocobase:websocket:clients:*';
-      const keys = await this.redis.keys(pattern);
-      return keys.map(key => key.replace('nocobase:websocket:clients:', ''));
+      const keys = await this.redis.keys('nocobase:websocket:clients:*');
+      const instances = keys.map(key => key.replace('nocobase:websocket:clients:', ''));
+      return instances;
     } catch (error) {
       console.error('[Multicore] Error getting all instances:', error);
-      throw error;
+      return [];
+    }
+  }
+
+  private handleWebSocketMessage(channel: string, message: string): void {
+    try {
+      const parsedMessage = JSON.parse(message);
+      console.log(`[Multicore] Received WebSocket message on ${channel}:`, parsedMessage.type);
+      
+      // Here you would typically forward the message to the appropriate WebSocket clients
+      // This is a placeholder for the actual WebSocket forwarding logic
+      
+    } catch (error) {
+      console.error('[Multicore] Error handling WebSocket message:', error);
     }
   }
 }

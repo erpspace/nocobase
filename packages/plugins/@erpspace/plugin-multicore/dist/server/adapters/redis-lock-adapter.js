@@ -1,92 +1,102 @@
-import { Redis } from 'ioredis';
-import { randomUUID } from 'crypto';
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
 
-// Define interfaces locally since they're not exported from @nocobase/lock-manager
-export interface ILockAdapter {
-  connect(): Promise<void>;
-  close(): Promise<void>;
-  acquire(key: string, ttl: number): Promise<string>;
-  release(key: string, lockValue: string): Promise<void>;
-  exists(key: string): Promise<boolean>;
-  getTtl(key: string): Promise<number>;
-  extend(key: string, lockValue: string, newTtl: number): Promise<boolean>;
-  runExclusive<T>(key: string, fn: () => Promise<T>, ttl: number): Promise<T>;
-  tryAcquire(key: string, timeout?: number): Promise<any>;
-}
-
-export class LockAcquireError extends Error {
-  constructor(message: string) {
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+var redis_lock_adapter_exports = {};
+__export(redis_lock_adapter_exports, {
+  LockAbortError: () => LockAbortError,
+  LockAcquireError: () => LockAcquireError,
+  RedisLockAdapter: () => RedisLockAdapter
+});
+module.exports = __toCommonJS(redis_lock_adapter_exports);
+var import_ioredis = require("ioredis");
+var import_crypto = require("crypto");
+class LockAcquireError extends Error {
+  constructor(message) {
     super(message);
-    this.name = 'LockAcquireError';
+    this.name = "LockAcquireError";
   }
 }
-
-export class LockAbortError extends Error {
-  constructor(message: string) {
+class LockAbortError extends Error {
+  constructor(message) {
     super(message);
-    this.name = 'LockAbortError';
+    this.name = "LockAbortError";
   }
 }
-
-export class RedisLockAdapter implements ILockAdapter {
-  private redis: Redis;
-  private connected = false;
-
-  constructor(private redisUrl: string = 'redis://localhost:6379') {
-    this.redis = new Redis(this.redisUrl, {
+class RedisLockAdapter {
+  constructor(redisUrl = "redis://localhost:6379") {
+    this.redisUrl = redisUrl;
+    this.redis = new import_ioredis.Redis(this.redisUrl, {
       maxRetriesPerRequest: 3,
-      lazyConnect: true,
+      lazyConnect: true
     });
-
     this.setupEventHandlers();
   }
-
-  private setupEventHandlers(): void {
-    this.redis.on('connect', () => {
-      console.log('[Multicore] Redis Lock adapter connected');
+  redis;
+  connected = false;
+  setupEventHandlers() {
+    this.redis.on("connect", () => {
+      console.log("[Multicore] Redis Lock adapter connected");
     });
-
-    this.redis.on('error', (error) => {
-      console.error('[Multicore] Redis Lock adapter error', error);
+    this.redis.on("error", (error) => {
+      console.error("[Multicore] Redis Lock adapter error", error);
     });
   }
-
-  public async connect(): Promise<void> {
+  async connect() {
     if (this.connected) {
       return;
     }
     try {
       await this.redis.connect();
       this.connected = true;
-      console.log('[Multicore] Redis Lock adapter connected');
+      console.log("[Multicore] Redis Lock adapter connected");
     } catch (error) {
-      console.error('[Multicore] Failed to connect Redis Lock adapter', error);
+      console.error("[Multicore] Failed to connect Redis Lock adapter", error);
       throw error;
     }
   }
-
-  public async close(): Promise<void> {
+  async close() {
     if (!this.connected) {
       return;
     }
     try {
       await this.redis.quit();
       this.connected = false;
-      console.log('[Multicore] Redis Lock adapter closed');
+      console.log("[Multicore] Redis Lock adapter closed");
     } catch (error) {
-      console.error('[Multicore] Error closing Redis Lock adapter', error);
+      console.error("[Multicore] Error closing Redis Lock adapter", error);
     }
   }
-
-  public async acquire(key: string, ttl: number = 5000): Promise<string> {
-    const lockValue = randomUUID();
+  async acquire(key, ttl = 5e3) {
+    const lockValue = (0, import_crypto.randomUUID)();
     const lockKey = `nocobase:lock:${key}`;
     const startTime = Date.now();
-
     while (Date.now() - startTime < ttl) {
       try {
-        const result = await this.redis.set(lockKey, lockValue, 'PX', ttl, 'NX');
-        if (result === 'OK') {
+        const result = await this.redis.set(lockKey, lockValue, "PX", ttl, "NX");
+        if (result === "OK") {
           console.log(`[Multicore] Acquired lock for key: ${key}`, { lockValue, ttl });
           return lockValue;
         }
@@ -98,8 +108,7 @@ export class RedisLockAdapter implements ILockAdapter {
     }
     throw new LockAcquireError(`Failed to acquire lock for key: ${key} within ${ttl}ms`);
   }
-
-  public async release(key: string, lockValue: string): Promise<void> {
+  async release(key, lockValue) {
     const lockKey = `nocobase:lock:${key}`;
     const script = `
       if redis.call("get",KEYS[1]) == ARGV[1] then
@@ -120,8 +129,7 @@ export class RedisLockAdapter implements ILockAdapter {
       throw error;
     }
   }
-
-  public async exists(key: string): Promise<boolean> {
+  async exists(key) {
     const lockKey = `nocobase:lock:${key}`;
     try {
       const result = await this.redis.exists(lockKey);
@@ -131,8 +139,7 @@ export class RedisLockAdapter implements ILockAdapter {
       throw error;
     }
   }
-
-  public async getTtl(key: string): Promise<number> {
+  async getTtl(key) {
     const lockKey = `nocobase:lock:${key}`;
     try {
       const ttl = await this.redis.pttl(lockKey);
@@ -142,8 +149,7 @@ export class RedisLockAdapter implements ILockAdapter {
       throw error;
     }
   }
-
-  public async extend(key: string, lockValue: string, newTtl: number): Promise<boolean> {
+  async extend(key, lockValue, newTtl) {
     const lockKey = `nocobase:lock:${key}`;
     const script = `
       if redis.call("get",KEYS[1]) == ARGV[1] then
@@ -164,8 +170,7 @@ export class RedisLockAdapter implements ILockAdapter {
       throw error;
     }
   }
-
-  public async runExclusive<T>(key: string, fn: () => Promise<T>, ttl: number): Promise<T> {
+  async runExclusive(key, fn, ttl) {
     const lockValue = await this.acquire(key, ttl);
     try {
       return await fn();
@@ -173,24 +178,22 @@ export class RedisLockAdapter implements ILockAdapter {
       await this.release(key, lockValue);
     }
   }
-
-  public async tryAcquire(key: string, timeout: number = 1000): Promise<any> {
-    const lockValue = randomUUID();
+  async tryAcquire(key, timeout = 1e3) {
+    const lockValue = (0, import_crypto.randomUUID)();
     const lockKey = `nocobase:lock:${key}`;
     const startTime = Date.now();
-
     while (Date.now() - startTime < timeout) {
       try {
-        const result = await this.redis.set(lockKey, lockValue, 'PX', timeout, 'NX');
-        if (result === 'OK') {
+        const result = await this.redis.set(lockKey, lockValue, "PX", timeout, "NX");
+        if (result === "OK") {
           console.log(`[Multicore] Acquired lock for key: ${key}`, { lockValue, timeout });
           return {
-            acquire: async (ttl: number) => {
+            acquire: async (ttl) => {
               return async () => {
                 await this.release(key, lockValue);
               };
             },
-            runExclusive: async (fn: () => Promise<any>, ttl: number) => {
+            runExclusive: async (fn, ttl) => {
               try {
                 return await fn();
               } finally {
@@ -208,3 +211,9 @@ export class RedisLockAdapter implements ILockAdapter {
     throw new LockAcquireError(`Failed to acquire lock for key: ${key} within ${timeout}ms`);
   }
 }
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  LockAbortError,
+  LockAcquireError,
+  RedisLockAdapter
+});

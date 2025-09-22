@@ -1,24 +1,18 @@
-/**
- * @erpspace/plugin-multicore
- * NocoBase Multicore Plugin - Enables cluster mode with Redis adapters
- */
-
 import { Plugin } from '@nocobase/server';
 import { RedisPubSubAdapter } from './adapters/redis-pub-sub-adapter';
 import { RedisEventQueueAdapter } from './adapters/redis-event-queue-adapter';
 import { RedisLockAdapter } from './adapters/redis-lock-adapter';
 import { RedisWebSocketManager } from './adapters/redis-websocket-manager';
-import { getMulticoreInfo } from './actions/multicore-info';
-import { broadcastMessage } from './actions/multicore-broadcast';
 
 export class PluginMulticore extends Plugin {
   private redisUrl: string;
-  private wsManager: RedisWebSocketManager;
-  private redisPubSubAdapter: RedisPubSubAdapter;
-  private redisEventQueueAdapter: RedisEventQueueAdapter;
-  private redisLockAdapter: RedisLockAdapter;
+  private redisPubSubAdapter?: RedisPubSubAdapter;
+  private redisEventQueueAdapter?: RedisEventQueueAdapter;
+  private redisLockAdapter?: RedisLockAdapter;
+  private wsManager?: RedisWebSocketManager;
 
-  constructor(app, options) {
+  constructor(app: any, options?: any) {
+    console.log('[Multicore] PluginMulticore constructor called');
     super(app, options);
     
     // Get Redis URL from environment or options
@@ -39,40 +33,40 @@ export class PluginMulticore extends Plugin {
   }
 
   async afterAdd() {
-    console.log('[Multicore] Plugin added - registering Redis adapters');
-    this.registerAdapters();
+    console.log('[Multicore] Plugin added - creating Redis adapters');
+    this.createAdapters();
   }
 
   async beforeLoad() {
+    console.log('[Multicore] Plugin beforeLoad called');
     console.log('[Multicore] Plugin loading - configuring cache manager');
     this.configureCacheManager();
-  }
-
-  async afterLoad() {
-    console.log('[Multicore] Plugin loaded - initializing WebSocket manager');
-    this.initializeWebSocketManager();
     this.defineAPI();
   }
 
+  async afterLoad() {
+    console.log('[Multicore] Plugin afterLoad called');
+  }
+
   async afterStart() {
+    console.log('[Multicore] Plugin afterStart called');
     console.log('[Multicore] Plugin started - switching to Redis adapters');
     await this.switchToRedisAdapters();
   }
 
   async beforeStop() {
     console.log('[Multicore] Plugin stopping - cleaning up');
-    if (this.wsManager) {
-      await this.wsManager.close();
+    if (this.redisPubSubAdapter) {
+      await this.redisPubSubAdapter.close();
     }
   }
 
-  private registerAdapters() {
+  private createAdapters() {
     try {
-      // Store adapter instances for later use
+      // Create adapter instances
       this.redisPubSubAdapter = new RedisPubSubAdapter(this.redisUrl);
       this.redisEventQueueAdapter = new RedisEventQueueAdapter(this.redisUrl);
       this.redisLockAdapter = new RedisLockAdapter(this.redisUrl);
-      
       console.log('[Multicore] Created Redis adapter instances');
     } catch (error) {
       console.error('[Multicore] Error creating adapters:', error);
@@ -81,11 +75,8 @@ export class PluginMulticore extends Plugin {
 
   private configureCacheManager() {
     try {
-      // Configure cache manager to use Redis
       if (this.app.cacheManager) {
-        // Set default store to redis if available
         this.app.cacheManager.defaultStore = 'redis';
-        
         console.log('[Multicore] Configured cache manager for Redis');
       }
     } catch (error) {
@@ -93,17 +84,36 @@ export class PluginMulticore extends Plugin {
     }
   }
 
-  private initializeWebSocketManager() {
+  private defineAPI() {
     try {
-      // Initialize WebSocket manager for inter-instance communication
-      this.wsManager = new RedisWebSocketManager(this.app.instanceId, this.redisUrl);
-      
-      // Set up WebSocket manager on the app (extend app interface)
-      (this.app as any).wsManager = this.wsManager;
-      
-      console.log('[Multicore] Initialized WebSocket manager');
+      this.app.resourceManager.define({
+        name: 'multicore',
+        actions: {
+          info: {
+            handler: async (ctx: any) => {
+              const info = await this.getInstanceInfo();
+              ctx.body = { data: info };
+            },
+            middleware: ['auth']
+          },
+          broadcast: {
+            handler: async (ctx: any) => {
+              const { type, data, targetInstance } = ctx.request.body;
+              const wsManager = this.getWebSocketManager();
+              if (wsManager) {
+                await wsManager.broadcast(type, data, targetInstance);
+                ctx.body = { status: 'ok', message: `Message of type "${type}" broadcasted.` };
+              } else {
+                ctx.throw(500, 'WebSocket manager not initialized');
+              }
+            },
+            middleware: ['auth']
+          }
+        }
+      });
+      console.log('[Multicore] Defined API routes');
     } catch (error) {
-      console.error('[Multicore] Error initializing WebSocket manager:', error);
+      console.error('[Multicore] Error defining API routes:', error);
     }
   }
 
@@ -121,14 +131,14 @@ export class PluginMulticore extends Plugin {
         console.log('[Multicore] Switched EventQueue to Redis');
       }
 
-      // Switch LockManager to Redis
+      // Store Redis Lock adapter for later use
       if (this.app.lockManager && this.redisLockAdapter) {
-        // LockManager doesn't have setAdapter method, so we'll store the adapter for later use
         (this.app as any).redisLockAdapter = this.redisLockAdapter;
         console.log('[Multicore] Stored Redis Lock adapter');
       }
 
-      // Connect WebSocket manager
+      // Initialize WebSocket manager
+      this.initializeWebSocketManager();
       if (this.wsManager) {
         await this.wsManager.connect();
         console.log('[Multicore] Connected WebSocket manager');
@@ -141,32 +151,23 @@ export class PluginMulticore extends Plugin {
     }
   }
 
+  private initializeWebSocketManager() {
+    try {
+      this.wsManager = new RedisWebSocketManager(this.app.instanceId, this.redisUrl);
+      (this.app as any).wsManager = this.wsManager;
+      console.log('[Multicore] Initialized WebSocket manager');
+    } catch (error) {
+      console.error('[Multicore] Error initializing WebSocket manager:', error);
+    }
+  }
+
   // Public API methods
   public getRedisUrl(): string {
     return this.redisUrl;
   }
 
-  public getWebSocketManager(): RedisWebSocketManager {
+  public getWebSocketManager(): RedisWebSocketManager | undefined {
     return this.wsManager;
-  }
-
-  private defineAPI() {
-    // Define API routes for multicore functionality
-    this.app.resourceManager.define({
-      name: 'multicore',
-      actions: {
-        info: {
-          handler: getMulticoreInfo,
-          middleware: ['auth']
-        },
-        broadcast: {
-          handler: broadcastMessage,
-          middleware: ['auth']
-        }
-      }
-    });
-    
-    console.log('[Multicore] Defined API routes');
   }
 
   public async getInstanceInfo(): Promise<any> {
@@ -193,4 +194,5 @@ export class PluginMulticore extends Plugin {
   }
 }
 
+console.log('[Multicore] Plugin module loaded');
 export default PluginMulticore;

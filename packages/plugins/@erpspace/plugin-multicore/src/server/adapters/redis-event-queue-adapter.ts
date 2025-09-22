@@ -1,8 +1,3 @@
-/**
- * Redis EventQueue Adapter for NocoBase Multicore Plugin
- * Implements IEventQueueAdapter using Redis for distributed event queuing
- */
-
 import { Redis } from 'ioredis';
 import { IEventQueueAdapter, QueueEventOptions, QueueMessageOptions } from '@nocobase/server';
 
@@ -10,22 +5,23 @@ export class RedisEventQueueAdapter implements IEventQueueAdapter {
   private redis: Redis;
   private connected = false;
 
-  constructor(redisUrl: string = 'redis://localhost:6379') {
-    this.redis = new Redis(redisUrl, {
+  constructor(private redisUrl: string = 'redis://localhost:6379') {
+    this.redis = new Redis(this.redisUrl, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
-
     this.setupEventHandlers();
   }
 
   private setupEventHandlers(): void {
     this.redis.on('connect', () => {
-      console.log('[Multicore] Redis EventQueue connected');
+      console.log('[Multicore] Redis EventQueue adapter connected');
+      this.connected = true;
     });
 
     this.redis.on('error', (error) => {
-      console.error('[Multicore] Redis EventQueue error', error);
+      console.error('[Multicore] Redis EventQueue adapter error', error);
+      this.connected = false;
     });
   }
 
@@ -71,27 +67,25 @@ export class RedisEventQueueAdapter implements IEventQueueAdapter {
     }
   }
 
-  public async pop(channel: string): Promise<any> {
+  public async pop(channel: string, timeout: number = 0): Promise<any> {
     try {
-      const result = await this.redis.brpop(`nocobase:queue:${channel}`, 1);
-      if (result) {
-        const [, eventStr] = result;
-        try {
-          return JSON.parse(eventStr);
-        } catch {
-          return eventStr;
-        }
+      const result = await this.redis.brpop(`nocobase:queue:${channel}`, timeout);
+      if (result && result[1]) {
+        const message = JSON.parse(result[1]);
+        console.log(`[Multicore] Popped message from queue: ${channel}`);
+        return message;
       }
       return null;
     } catch (error) {
-      console.error(`[Multicore] Error popping event from queue ${channel}:`, error);
+      console.error(`[Multicore] Error popping from queue ${channel}:`, error);
       throw error;
     }
   }
 
   public async length(channel: string): Promise<number> {
     try {
-      return await this.redis.llen(`nocobase:queue:${channel}`);
+      const len = await this.redis.llen(`nocobase:queue:${channel}`);
+      return len;
     } catch (error) {
       console.error(`[Multicore] Error getting queue length for ${channel}:`, error);
       throw error;
@@ -122,7 +116,7 @@ export class RedisEventQueueAdapter implements IEventQueueAdapter {
   public async publish(channel: string, message: any, options: QueueMessageOptions = {}): Promise<void> {
     try {
       const messageWithOptions = {
-        id: `msg_${Date.now()}_${Math.random()}`,
+        id: `msg_${Date.now()}_${Math.random()}`, // Generate a unique ID if not provided
         content: message,
         options: {
           retried: options.retried || 0,

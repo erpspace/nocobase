@@ -1,16 +1,12 @@
 {
   "name": "@erpspace/plugin-multicore",
-  "version": "0.1.0",
+  "displayName": "Multicore Plugin",
+  "displayName.zh-CN": "多核插件",
   "description": "NocoBase Multicore Plugin - Enables cluster mode with Redis adapters",
-  "main": "lib/server/index.js",
-  "files": [
-    "lib",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "echo 'Build completed'",
-    "dev": "echo 'Dev mode'"
-  },
+  "description.zh-CN": "NocoBase 多核插件 - 使用 Redis 适配器启用集群模式",
+  "version": "0.1.0",
+  "main": "./dist/server/index.js",
+  "license": "AGPL-3.0",
   "dependencies": {
     "ioredis": "^5.3.2"
   },
@@ -30,5 +26,5 @@
     "scalability"
   ],
   "author": "ERPSpace",
-  "license": "MIT"
+  "gitHead": "d0b4efe4be55f8c79a98a331d99d9f8cf99021a1"
 }

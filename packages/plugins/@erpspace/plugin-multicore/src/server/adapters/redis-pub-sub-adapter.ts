@@ -1,8 +1,3 @@
-/**
- * Redis PubSub Adapter for NocoBase Multicore Plugin
- * Implements IPubSubAdapter using Redis for inter-instance communication
- */
-
 import { Redis } from 'ioredis';
 import { IPubSubAdapter } from '@nocobase/server';
 
@@ -11,13 +6,13 @@ export class RedisPubSubAdapter implements IPubSubAdapter {
   private subscriber: Redis;
   private connected = false;
 
-  constructor(redisUrl: string = 'redis://localhost:6379') {
-    this.redis = new Redis(redisUrl, {
+  constructor(private redisUrl: string = 'redis://localhost:6379') {
+    this.redis = new Redis(this.redisUrl, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
 
-    this.subscriber = new Redis(redisUrl, {
+    this.subscriber = new Redis(this.redisUrl, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
@@ -27,11 +22,13 @@ export class RedisPubSubAdapter implements IPubSubAdapter {
 
   private setupEventHandlers(): void {
     this.redis.on('connect', () => {
-      console.log('[Multicore] Redis PubSub publisher connected');
+      console.log('[Multicore] Redis PubSub adapter connected');
+      this.connected = true;
     });
 
     this.redis.on('error', (error) => {
-      console.error('[Multicore] Redis PubSub publisher error', error);
+      console.error('[Multicore] Redis PubSub adapter error', error);
+      this.connected = false;
     });
 
     this.subscriber.on('connect', () => {
@@ -76,7 +73,7 @@ export class RedisPubSubAdapter implements IPubSubAdapter {
     }
   }
 
-  public async isConnected(): Promise<boolean> {
+  public isConnected(): boolean {
     return this.connected && this.redis.status === 'ready' && this.subscriber.status === 'ready';
   }
 
@@ -94,23 +91,17 @@ export class RedisPubSubAdapter implements IPubSubAdapter {
   public async subscribe(channel: string, callback: (message: any) => void): Promise<void> {
     try {
       await this.subscriber.subscribe(channel);
-      
       this.subscriber.on('message', (receivedChannel, message) => {
         if (receivedChannel === channel) {
           try {
-            let parsedMessage;
-            try {
-              parsedMessage = JSON.parse(message);
-            } catch {
-              parsedMessage = message;
-            }
+            const parsedMessage = JSON.parse(message);
             callback(parsedMessage);
           } catch (error) {
-            console.error(`[Multicore] Error processing message from channel ${channel}:`, error);
+            // If parsing fails, pass the raw message
+            callback(message);
           }
         }
       });
-
       console.log(`[Multicore] Subscribed to channel: ${channel}`);
     } catch (error) {
       console.error(`[Multicore] Error subscribing to channel ${channel}:`, error);
