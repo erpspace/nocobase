@@ -20,11 +20,7 @@ export default {
     if (isClusterMode) {
       console.log('[CLUSTER] Reloading collections from database for listMeta');
       // Force reload all collections from database
-      const collectionModels = await db.getRepository('collections').find({
-        filter: {
-          loadedFromCollectionManager: true,
-        },
-      });
+      const collectionModels = await db.getRepository('collections').find();
       
       for (const model of collectionModels) {
         await model.load();

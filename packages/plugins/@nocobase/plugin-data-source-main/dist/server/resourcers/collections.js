@@ -47,11 +47,7 @@ var collections_default = {
     const isClusterMode = process.env.CLUSTER_MODE === "max" || process.env.CLUSTER_MODE === "true";
     if (isClusterMode) {
       console.log("[CLUSTER] Reloading collections from database for listMeta");
-      const collectionModels = await db.getRepository("collections").find({
-        filter: {
-          loadedFromCollectionManager: true
-        }
-      });
+      const collectionModels = await db.getRepository("collections").find();
       for (const model of collectionModels) {
         await model.load();
       }
